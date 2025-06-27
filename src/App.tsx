@@ -3,16 +3,29 @@ import {
   SignedIn,
   SignedOut,
   SignIn,
-  SignInButton,
-  useUser,
 } from '@clerk/clerk-react'
-import { useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
+
+import MainLayout from './layouts/MainLayout'
+import Dashboard from './pages/Dashboard'
+import Inventory from './pages/Inventory'
+import Projects from './pages/Projects'
+import Team from './pages/Team'
+import AiChat from './pages/AiChat'
 
 export default function App() {
   return (
     <>
       <SignedIn>
-        <LoggedInUser />
+        <Routes>
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/projects" element={<Projects />} />
+            <Route path="/team" element={<Team />} />
+            <Route path="/ai-chat" element={<AiChat />} />
+          </Route>
+        </Routes>
       </SignedIn>
 
       <SignedOut>
@@ -24,22 +37,5 @@ export default function App() {
         />
       </SignedOut>
     </>
-  )
-}
-
-function LoggedInUser() {
-  const { user } = useUser()
-
-  useEffect(() => {
-    if (user) {
-      console.log('🪪 Your Clerk User ID:', user.id)
-    }
-  }, [user])
-
-  return (
-    <div className="space-y-2">
-      <h2 className="text-2xl font-semibold">Welcome {user?.fullName}</h2>
-      <p>This is your dashboard. Use the sidebar to navigate materials, projects, and team.</p>
-    </div>
   )
 }

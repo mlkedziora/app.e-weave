@@ -1,0 +1,42 @@
+// backend/src/material/material.controller.ts
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Patch,
+  Delete,
+  Body,
+} from '@nestjs/common';
+import { MaterialService } from './material.service';
+import { Prisma } from '@prisma/client';
+
+@Controller('materials')
+export class MaterialController {
+  constructor(private readonly materialService: MaterialService) {}
+
+  @Post()
+  create(@Body() data: Prisma.MaterialCreateInput) {
+    return this.materialService.create(data);
+  }
+
+  @Get()
+  findAll() {
+    return this.materialService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.materialService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() data: Prisma.MaterialUpdateInput) {
+    return this.materialService.update(id, data);
+  }
+
+  @Delete(':id')
+  delete(@Param('id') id: string) {
+    return this.materialService.delete(id);
+  }
+}

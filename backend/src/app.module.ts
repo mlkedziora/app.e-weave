@@ -10,6 +10,7 @@ import { ProjectModule } from './project/project.module';
 import { MemberModule } from './member/member.module';
 
 import { RolesGuard } from './auth/roles.guard'; // 🔐 Import your custom guard
+import { PrismaService } from './prisma/prisma.service';
 
 @Module({
   imports: [TeamModule, MaterialModule, ProjectModule, MemberModule],
@@ -20,6 +21,7 @@ import { RolesGuard } from './auth/roles.guard'; // 🔐 Import your custom guar
       provide: APP_GUARD,
       useClass: RolesGuard, // 🔐 Register it globally
     },
+    PrismaService,
   ],
 })
 export class AppModule {}

@@ -1,13 +1,5 @@
 // backend/src/material/material.controller.ts
-import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  Patch,
-  Delete,
-  Body,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common';
 import { MaterialService } from './material.service';
 import { Prisma } from '@prisma/client';
 

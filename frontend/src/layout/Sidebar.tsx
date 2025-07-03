@@ -1,4 +1,3 @@
-// src/layout/Sidebar.tsx
 import { Link, useLocation } from 'react-router-dom'
 
 const navItems = [
@@ -6,6 +5,7 @@ const navItems = [
   { path: '/projects', label: 'PROJECTS' },
   { path: '/team', label: 'TEAM' },
   { path: '/ai-chat', label: 'AI-CHAT' },
+  { path: '/add-new', label: 'ADD NEW' }, // ✅ New link
 ]
 
 export default function Sidebar() {

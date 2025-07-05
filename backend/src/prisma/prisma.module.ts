@@ -1,9 +1,9 @@
-// backend/src/prisma/prisma.module.ts
-import { Module } from '@nestjs/common';
-import { PrismaService } from './prisma.service';
+import { Global, Module } from '@nestjs/common'
+import { PrismaService } from './prisma.service.js'
 
+@Global()
 @Module({
   providers: [PrismaService],
-  exports: [PrismaService], // 👈 makes it usable in other modules
+  exports: [PrismaService],
 })
 export class PrismaModule {}

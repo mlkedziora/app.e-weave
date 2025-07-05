@@ -13,6 +13,7 @@ import Layout from './layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import Projects from './pages/Projects'
+import ProjectDetail from './components/projects/ProjectDetail' // 👈 NEW
 import Team from './pages/Team'
 import AiChat from './pages/AiChat'
 import AddNew from './pages/AddNew'
@@ -31,15 +32,18 @@ function Loader() {
   )
 }
 
-// ✅ ProtectedRoute with full Clerk handling
+// ✅ Corrected ProtectedRoute
 function ProtectedRoute({ children }: { children: React.ReactElement }) {
   const { isLoaded, isSignedIn, user } = useUser()
 
   if (!isLoaded) return <Loader />
   if (!isSignedIn) return <RedirectToSignIn />
 
-  const approved = user.publicMetadata?.approved === true
-  if (!approved) return <Navigate to="/pending-approval" />
+  const role = user.publicMetadata?.role
+  const teamId = user.publicMetadata?.teamId
+
+  const isApproved = typeof role === 'string' && typeof teamId === 'string'
+  if (!isApproved) return <Navigate to="/pending-approval" />
 
   return children
 }
@@ -52,7 +56,7 @@ export default function App() {
       <Route path="/request-access" element={<RequestAccess />} />
       <Route path="/pending-approval" element={<PendingApproval />} />
 
-      {/* Clerk Sign-In Page */}
+      {/* Clerk Sign-In */}
       <Route
         path="/sign-in/*"
         element={<SignIn routing="path" path="/sign-in" redirectUrl="/dashboard" />}
@@ -80,6 +84,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Layout><Projects /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:id" // 👈 allows deep linking / SPA routing
+        element={
+          <ProtectedRoute>
+            <Layout><ProjectDetail /></Layout>
           </ProtectedRoute>
         }
       />

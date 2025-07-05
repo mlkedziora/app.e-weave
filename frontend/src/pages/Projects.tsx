@@ -1,22 +1,20 @@
+import ProjectsOverview from '../components/projects/ProjectsOverview'
+import ProjectDetail from '../components/projects/ProjectDetail'
 import { useState } from 'react'
-import ProjectsOverview from '@/components/projects/ProjectsOverview'
-import ProjectDetail from '@/components/projects/ProjectDetail'
 
 export default function Projects() {
-  const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null)
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold mb-4">Projects</h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Overview list */}
-        <ProjectsOverview onProjectClick={(name: string) => setSelectedProjectName(name)} />
-
-        {/* Detail viewer */}
-        {selectedProjectName ? (
-          <ProjectDetail projectName={selectedProjectName} />
+    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
+      <div className="md:w-1/2 overflow-y-auto">
+        <ProjectsOverview onSelect={setSelectedProjectId} selectedId={selectedProjectId} />
+      </div>
+      <div className="md:w-1/2 border-l overflow-y-auto">
+        {selectedProjectId ? (
+          <ProjectDetail projectId={selectedProjectId} />
         ) : (
-          <div className="text-gray-500 italic">Select a project to view details</div>
+          <div className="p-6 text-gray-500">Select a project to view details</div>
         )}
       </div>
     </div>

@@ -1,17 +1,23 @@
-// backend/src/main.ts
 import { NestFactory } from '@nestjs/core'
-import { AppModule } from './app.module'
+import { AppModule } from './app.module.js'
+import { ValidationPipe } from '@nestjs/common'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
+  app.enableCors()
 
-  // ✅ Enable CORS for frontend
-  app.enableCors({
-    origin: 'http://localhost:5173', // or '*' during dev
-    credentials: true,
-  })
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+    })
+  )
 
   await app.listen(3000)
+  console.log('🚀 Backend is running on http://localhost:3000')
 }
 bootstrap()
-

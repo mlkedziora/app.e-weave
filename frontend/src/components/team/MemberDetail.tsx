@@ -1,89 +1,76 @@
-const mockMembers = [
-  {
-    name: 'Alice Johnson',
-    position: 'Seamstress',
-    startDate: '2024-02-01',
-    endDate: '2025-01-31',
-    currentTask: { name: 'Cutting', progress: 80 },
-    taskHistory: ['Cutting', 'Sewing', 'Pressing'],
-    performance: [60, 75, 80, 90],
-    forecast: 'Expected to complete project in 3 days.',
-  },
-  {
-    name: 'Bob Smith',
-    position: 'Tailor',
-    startDate: '2023-09-15',
-    endDate: '2025-01-31',
-    currentTask: { name: 'Sewing', progress: 45 },
-    taskHistory: ['Sewing', 'Fitting', 'Hem Adjustments'],
-    performance: [50, 55, 60, 70],
-    forecast: 'Expected to complete project in 5 days.',
-  },
-  {
-    name: 'Charlie Gray',
-    position: 'Finisher',
-    startDate: '2024-05-01',
-    endDate: '2025-03-01',
-    currentTask: { name: 'Ironing', progress: 90 },
-    taskHistory: ['Ironing', 'Pressing'],
-    performance: [40, 70, 90],
-    forecast: 'On track for early completion.',
-  },
-]
+import { useEffect, useState } from 'react'
 
 export default function MemberDetail({ memberName }: { memberName: string }) {
-  const member = mockMembers.find((m) => m.name === memberName)
+  const [member, setMember] = useState<any | null>(null)
+
+  useEffect(() => {
+    fetch('http://localhost:3000/members')
+      .then(res => res.json())
+      .then(data => {
+        const match = data.find((m: any) => m.name === memberName)
+        setMember(match)
+      })
+  }, [memberName])
 
   if (!member) {
     return (
       <div className="text-gray-500 italic">
-        Member "{memberName}" not found in mock data.
+        Member "{memberName}" not found in backend data.
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <h2 className="text-xl font-semibold">{member.name}</h2>
-      <div className="text-sm text-gray-600">
-        <p>Position: {member.position}</p>
-        <p>Start Date: {member.startDate}</p>
-        <p>End Date: {member.endDate}</p>
-      </div>
+      <p className="text-sm text-gray-600">Role: {member.role}</p>
+      <p className="text-sm text-gray-600">Position: {member.position ?? '—'}</p>
+      <p className="text-sm text-gray-600">User ID: {member.userId}</p>
+      <p className="text-sm text-gray-500">
+        Active: {new Date(member.startDate).toLocaleDateString()} – {new Date(member.endDate).toLocaleDateString()}
+      </p>
+      <p className="text-sm text-gray-700">Avg Performance Score: {member.progress}%</p>
 
-      <div>
-        <p className="font-medium text-sm">Current Task: {member.currentTask.name}</p>
-        <div className="w-full h-2 bg-gray-200 rounded mt-1">
-          <div
-            className="h-2 bg-green-500 rounded"
-            style={{ width: `${member.currentTask.progress}%` }}
-          ></div>
+      {/* Growth Forecast */}
+      {member.growthForecasts?.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-lg font-semibold">Growth Forecast</h3>
+          <ul className="text-sm space-y-1 mt-1">
+            {member.growthForecasts.map((gf: any, idx: number) => (
+              <li key={idx} className="bg-gray-100 rounded p-2">
+                <p><strong>Projected Role:</strong> {gf.projectedRole}</p>
+                <p><strong>Rationale:</strong> {gf.rationale}</p>
+                <p className="text-gray-500"><strong>For:</strong> {new Date(gf.forecastFor).toLocaleDateString()}</p>
+              </li>
+            ))}
+          </ul>
         </div>
-        <p className="text-xs text-right text-gray-500">{member.currentTask.progress}%</p>
-      </div>
+      )}
 
-      <div>
-        <p className="font-medium text-sm mb-1">Task History</p>
-        <ul className="list-disc list-inside text-sm text-gray-700">
-          {member.taskHistory.map((task, idx) => (
-            <li key={idx}>{task}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div>
-        <p className="font-medium text-sm mb-1">Performance Chart</p>
-        <div className="flex space-x-2 items-end h-20">
-          {member.performance.map((val, idx) => (
-            <div key={idx} className="w-4 bg-blue-400" style={{ height: `${val}%` }}></div>
-          ))}
+      {/* Material History */}
+      {member.materialHistories?.length > 0 && (
+        <div className="mt-6">
+          <h3 className="text-lg font-semibold">Material History</h3>
+          <ul className="space-y-2 mt-2">
+            {member.materialHistories.map((entry: any, i: number) => (
+              <li key={i} className="border p-3 rounded bg-gray-50 text-sm space-y-1">
+                <div>
+                  <strong>Material:</strong> {entry.material.name} ({entry.material.fiber}, {entry.material.color})
+                </div>
+                <div>
+                  <strong>Change:</strong> {entry.deltaQuantity > 0 ? '+' : ''}{entry.deltaQuantity}m
+                </div>
+                <div>
+                  <strong>Note:</strong> {entry.note}
+                </div>
+                <div className="text-gray-500">
+                  <strong>Date:</strong> {new Date(entry.timestamp).toLocaleDateString()}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-
-      <div className="text-sm text-gray-600">
-        <p className="font-medium">Growth Forecast:</p>
-        <p>{member.forecast}</p>
-      </div>
+      )}
     </div>
   )
 }

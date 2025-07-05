@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MaterialService } from './material.service';
+import { MaterialService } from './material.service.js';
 
 describe('MaterialService', () => {
   let service: MaterialService;
@@ -16,3 +16,5 @@ describe('MaterialService', () => {
     expect(service).toBeDefined();
   });
 });
+
+export { MaterialService };

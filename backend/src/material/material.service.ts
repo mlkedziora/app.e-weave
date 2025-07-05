@@ -1,8 +1,9 @@
 // backend/src/material/material.service.ts
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service.js';
 import { Injectable } from '@nestjs/common';
 import { Prisma, Material } from '@prisma/client';
 
+// backend/src/material/material.service.ts
 @Injectable()
 export class MaterialService {
   constructor(private prisma: PrismaService) {}
@@ -11,8 +12,8 @@ export class MaterialService {
     return this.prisma.material.create({ data });
   }
 
-  findAll() {
-    return this.prisma.material.findMany();
+  findAllByTeam(teamId: string) {
+    return this.prisma.material.findMany({ where: { teamId } });
   }
 
   findOne(id: string) {
@@ -26,4 +27,10 @@ export class MaterialService {
   delete(id: string) {
     return this.prisma.material.delete({ where: { id } });
   }
+
+  findAllUnsafe() {
+    return this.prisma.material.findMany()
+  };
 }
+
+

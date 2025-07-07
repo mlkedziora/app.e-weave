@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  output        = "./node_modules/@prisma/client"
+  binaryTargets = ["native"]
 }
 
 datasource db {
@@ -21,16 +23,62 @@ model TeamMember {
   id                 String              @id @default(cuid())
   userId             String              @unique // Clerk user ID
   name               String
-  role               String              // 'admin' | 'manager' | 'member'
+  role               String // 'admin' | 'manager' | 'member'
   position           String?
   startDate          DateTime?
   endDate            DateTime?
   teamId             String
   team               Team                @relation(fields: [teamId], references: [id])
-  tasks              Task[]
+  assignedTasks      Task[]              @relation("AssignedTasks") // 👈 was `tasks`
+  givenTasks         Task[]              @relation("GivenTasks") // 👈 new field
   materialHistories  MaterialHistory[]
   performanceMetrics PerformanceMetric[]
   growthForecasts    GrowthForecast[]
+}
+
+model Project {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?
+  startDate         DateTime?
+  deadline          DateTime?
+  notes             String?
+  teamId            String
+  team              Team              @relation(fields: [teamId], references: [id])
+  tasks             Task[]
+  assignedMaterials ProjectMaterial[]
+  createdAt         DateTime          @default(now())
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  name        String
+  progress    Int       @default(0)
+  startedAt   DateTime
+  completedAt DateTime?
+
+  // Relations
+  project   Project @relation(fields: [projectId], references: [id])
+  projectId String
+
+  assignee   TeamMember @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  assigneeId String
+
+  assignedBy   TeamMember @relation("GivenTasks", fields: [assignedById], references: [id])
+  assignedById String
+
+  subtasks Subtask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subtask {
+  id        String  @id @default(cuid())
+  name      String
+  completed Boolean @default(false)
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id])
 }
 
 model PerformanceMetric {
@@ -52,34 +100,6 @@ model GrowthForecast {
   projectedRole         String?
   rationale             String?
   createdAt             DateTime   @default(now())
-}
-
-model Project {
-  id                String            @id @default(cuid())
-  name              String
-  description       String?
-  startDate         DateTime?
-  deadline          DateTime?
-  notes             String?
-  teamId            String
-  team              Team              @relation(fields: [teamId], references: [id])
-  tasks             Task[]
-  assignedMaterials ProjectMaterial[]
-  createdAt         DateTime          @default(now())
-}
-
-model Task {
-  id             String     @id @default(cuid())
-  name           String
-  projectId      String
-  assigneeId     String
-  estimatedHours Float?
-  startedAt      DateTime?
-  completedAt    DateTime?
-  progress       Float      @default(0)
-  project        Project    @relation(fields: [projectId], references: [id])
-  assignee       TeamMember @relation(fields: [assigneeId], references: [id])
-  createdAt      DateTime   @default(now())
 }
 
 model Material {

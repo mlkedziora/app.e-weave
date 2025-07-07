@@ -13,7 +13,7 @@ import { RolesGuard } from './auth/roles.guard.js'; // 🔐 Import your custom g
 import { PrismaService } from './prisma/prisma.service.js';
 
 @Module({
-  imports: [TeamModule, MaterialModule, ProjectModule, MemberModule],
+  imports: [TeamModule, MaterialModule, MaterialModule, MemberModule],
   controllers: [AppController],
   providers: [
     AppService,
@@ -25,3 +25,17 @@ import { PrismaService } from './prisma/prisma.service.js';
   ],
 })
 export class AppModule {}
+
+// @Module({
+//   imports: [TeamModule, MaterialModule, MaterialModule, MemberModule],
+//   controllers: [AppController],
+//   providers: [
+//     AppService,
+//     {
+//       provide: APP_GUARD,
+//       useClass: RolesGuard, // 🔐 Register it globally
+//     },
+//     PrismaService,
+//   ],
+// })
+// export class AppModule {}

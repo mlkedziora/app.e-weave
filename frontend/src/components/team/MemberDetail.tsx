@@ -4,7 +4,7 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
   const [member, setMember] = useState<any | null>(null)
 
   useEffect(() => {
-    fetch('http://localhost:3000/members')
+    fetch('http://localhost:3000/members') // Ensure this returns nested currentTask + completedTasks + subtasks
       .then(res => res.json())
       .then(data => {
         const match = data.find((m: any) => m.name === memberName)
@@ -20,57 +20,112 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
     )
   }
 
+  const start = new Date(member.startDate).toLocaleDateString()
+  const end = new Date(member.endDate).toLocaleDateString()
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold">{member.name}</h2>
-      <p className="text-sm text-gray-600">Role: {member.role}</p>
-      <p className="text-sm text-gray-600">Position: {member.position ?? '—'}</p>
-      <p className="text-sm text-gray-600">User ID: {member.userId}</p>
-      <p className="text-sm text-gray-500">
-        Active: {new Date(member.startDate).toLocaleDateString()} – {new Date(member.endDate).toLocaleDateString()}
-      </p>
-      <p className="text-sm text-gray-700">Avg Performance Score: {member.progress}%</p>
+    <div className="space-y-6 p-4 max-w-3xl mx-auto">
+      {/* Profile Header */}
+      <div className="flex items-center space-x-4">
+        <img
+          src="/profile-icon.jpg"
+          alt="Profile"
+          className="w-20 h-20 rounded-full object-cover"
+        />
+        <div>
+          <h2 className="text-2xl font-bold">{member.name}</h2>
+          <p className="text-sm text-gray-600">Position: {member.position ?? '—'}</p>
+          <p className="text-sm text-gray-600">
+            Start: {start} — End: {end}
+          </p>
+        </div>
+      </div>
+
+      {/* Current Task */}
+      <div>
+        <h3 className="text-lg font-semibold">Current Task</h3>
+        {member.currentTask ? (
+          <>
+            <p className="font-medium text-gray-800 mt-1">
+              {member.currentTask.name}
+            </p>
+            {member.currentTask.subtasks?.length > 0 ? (
+              <ul className="list-disc list-inside mt-2 text-sm space-y-1">
+                {member.currentTask.subtasks.map((subtask: any, i: number) => (
+                  <li
+                    key={i}
+                    className={subtask.completed ? 'line-through text-green-600' : 'text-gray-800'}
+                  >
+                    {subtask.name}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-500">No subtasks available.</p>
+            )}
+            <p className="mt-2 text-sm text-blue-600 font-semibold">
+              Progress: {member.currentTask.progress}%
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500 mt-1">No current tasks have been assigned.</p>
+        )}
+      </div>
+
+      {/* Task History */}
+      <div>
+        <h3 className="text-lg font-semibold mt-4">Task History</h3>
+        {member.completedTasks?.length > 0 ? (
+          <ul className="text-sm list-disc list-inside mt-2 space-y-1">
+            {member.completedTasks.slice(0, 10).map((task: any, i: number) => (
+              <li key={i} className="text-gray-700">
+                <span className="font-medium">{task.name}</span>
+                {task.subtasks?.length ? (
+                  <ul className="ml-4 list-disc text-xs text-gray-500 mt-1 space-y-0.5">
+                    {task.subtasks.map((sub: any, j: number) => (
+                      <li key={j} className="line-through">
+                        {sub.name}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-500 mt-1">No task history yet.</p>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-4 mt-4">
+        <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">
+          Assign Task
+        </button>
+        <button className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300">
+          Expand History
+        </button>
+      </div>
+
+      {/* Performance Chart */}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold">Performance Chart</h3>
+        <img
+          src="/performance-chart.png"
+          alt="Performance Chart"
+          className="w-full mt-2 rounded shadow"
+        />
+      </div>
 
       {/* Growth Forecast */}
-      {member.growthForecasts?.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-lg font-semibold">Growth Forecast</h3>
-          <ul className="text-sm space-y-1 mt-1">
-            {member.growthForecasts.map((gf: any, idx: number) => (
-              <li key={idx} className="bg-gray-100 rounded p-2">
-                <p><strong>Projected Role:</strong> {gf.projectedRole}</p>
-                <p><strong>Rationale:</strong> {gf.rationale}</p>
-                <p className="text-gray-500"><strong>For:</strong> {new Date(gf.forecastFor).toLocaleDateString()}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Material History */}
-      {member.materialHistories?.length > 0 && (
-        <div className="mt-6">
-          <h3 className="text-lg font-semibold">Material History</h3>
-          <ul className="space-y-2 mt-2">
-            {member.materialHistories.map((entry: any, i: number) => (
-              <li key={i} className="border p-3 rounded bg-gray-50 text-sm space-y-1">
-                <div>
-                  <strong>Material:</strong> {entry.material.name} ({entry.material.fiber}, {entry.material.color})
-                </div>
-                <div>
-                  <strong>Change:</strong> {entry.deltaQuantity > 0 ? '+' : ''}{entry.deltaQuantity}m
-                </div>
-                <div>
-                  <strong>Note:</strong> {entry.note}
-                </div>
-                <div className="text-gray-500">
-                  <strong>Date:</strong> {new Date(entry.timestamp).toLocaleDateString()}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold">Growth Forecast</h3>
+        <img
+          src="/growth-forecast.png"
+          alt="Growth Forecast"
+          className="w-full mt-2 rounded shadow"
+        />
+      </div>
     </div>
   )
 }

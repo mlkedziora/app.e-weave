@@ -1,5 +1,5 @@
 // frontend/src/pages/Inventory.tsx
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import MaterialList from '../components/inventory/MaterialList'
 import MaterialDetail from '../components/inventory/MaterialDetail'

@@ -1,4 +1,5 @@
-import { Controller, Get } from '@nestjs/common'
+// backend/src/member/member.controller.ts
+import { Controller, Get, Param } from '@nestjs/common'
 import { MemberService } from './member.service.js'
 
 @Controller('members')
@@ -8,5 +9,10 @@ export class MemberController {
   @Get()
   findAll() {
     return this.memberService.findAll()
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.memberService.findOne(id)
   }
 }

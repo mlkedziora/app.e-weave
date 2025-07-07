@@ -1,16 +1,22 @@
-// src/pages/Projects.tsx
-import { ProjectForm } from '../components/ProjectForm'
-import { ProjectsList } from '../components/ProjectsList'
-import { ProjectAssignment } from '../components/ProjectAssignment'
+import ProjectsOverview from '../components/projects/ProjectsOverview'
+import ProjectDetail from '../components/projects/ProjectDetail'
+import { useState } from 'react'
 
 export default function Projects() {
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">🛠 Projects</h2>
-      <p>View, create, and manage your team’s projects here.</p>
-      <ProjectForm />
-      <ProjectAssignment />
-      <ProjectsList />
+    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
+      <div className="md:w-1/2 overflow-y-auto">
+        <ProjectsOverview onSelect={setSelectedProjectId} selectedId={selectedProjectId} />
+      </div>
+      <div className="md:w-1/2 border-l overflow-y-auto">
+        {selectedProjectId ? (
+          <ProjectDetail projectId={selectedProjectId} />
+        ) : (
+          <div className="p-6 text-gray-500">Select a project to view details</div>
+        )}
+      </div>
     </div>
   )
 }

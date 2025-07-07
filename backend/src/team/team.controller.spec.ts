@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TeamController } from './team.controller';
+import { TeamController } from './team.controller.js';
 
 describe('TeamController', () => {
   let controller: TeamController;

@@ -87,6 +87,7 @@ model Task {
 model Material {
   id               String            @id @default(cuid())
   name             String
+  imageUrl         String?
   categoryId       String
   fiber            String
   length           Float // in meters

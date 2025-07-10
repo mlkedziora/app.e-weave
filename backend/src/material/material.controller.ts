@@ -1,8 +1,6 @@
-// backend/src/material/material.controller.ts
 import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common'
 import { MaterialService } from './material.service.js'
 import { Prisma } from '@prisma/client'
-import { CurrentUser, AuthenticatedUser } from '../auth/current-user.decorator.js'
 
 @Controller('materials')
 export class MaterialController {
@@ -12,15 +10,15 @@ export class MaterialController {
   create(@Body() data: Prisma.MaterialCreateInput) {
     return this.materialService.create(data)
   }
-  
+
   @Get()
   findAll() {
-    return this.materialService.findAllUnsafe(); // temporary, no team filter
+    return this.materialService.findAllWithCategoryAndNotes()
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
-    return this.materialService.findOne(id)
+    return this.materialService.findOneWithDetails(id)
   }
 
   @Patch(':id')

@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { faker } from '@faker-js/faker';
 
 const prisma = new PrismaClient();
 
@@ -12,26 +13,28 @@ async function main() {
     create: { name: 'SFTC' },
   });
 
-  // Clean slate
-  await prisma.subtask.deleteMany();
-  await prisma.task.deleteMany();
-  await prisma.projectMaterial.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.materialHistory.deleteMany();
-  await prisma.material.deleteMany({ where: { teamId: team.id } });
-  await prisma.materialCategory.deleteMany({ where: { teamId: team.id } });
-  await prisma.performanceMetric.deleteMany();
-  await prisma.growthForecast.deleteMany();
-  await prisma.teamMember.deleteMany({ where: { teamId: team.id } });
+  // // Clean slate
+  // await prisma.subtask.deleteMany();
+  // await prisma.task.deleteMany();
+  // await prisma.projectMaterial.deleteMany();
+  // await prisma.project.deleteMany();
+  // await prisma.materialHistory.deleteMany();
+  // await prisma.materialNote.deleteMany();
+  // await prisma.material.deleteMany({ where: { teamId: team.id } });
+  // await prisma.materialCategory.deleteMany({ where: { teamId: team.id } });
+  // await prisma.performanceMetric.deleteMany();
+  // await prisma.growthForecast.deleteMany();
+  // await prisma.teamMember.deleteMany({ where: { teamId: team.id } });
 
   // Categories
-  const [fabricsCategory, trimsCategory] = await Promise.all([
+  const [fabricsCategory, trimsCategory, fusingCategory] = await Promise.all([
     prisma.materialCategory.create({ data: { name: 'Fabrics', teamId: team.id } }),
     prisma.materialCategory.create({ data: { name: 'Trims', teamId: team.id } }),
+    prisma.materialCategory.create({ data: { name: 'Fusings', teamId: team.id } }),
   ]);
 
   // Team members
-  const members = await prisma.teamMember.createMany({
+  await prisma.teamMember.createMany({
     data: [
       {
         userId: 'user_1',
@@ -75,7 +78,102 @@ async function main() {
 
   const actualMembers = await prisma.teamMember.findMany({ where: { teamId: team.id } });
 
-  // Performance and growth
+  // Materials
+  const allMaterials = [
+    {
+      categoryId: fabricsCategory.id,
+      names: [
+        'Organic Cotton Voile', 'Linen Twill', 'Tencel Sateen', 'Silk Crepe',
+        'Wool Gabardine', 'Bamboo Jersey', 'Cupro Satin', 'Recycled Nylon', 'Hemp Canvas',
+      ],
+    },
+    {
+      categoryId: trimsCategory.id,
+      names: [
+        'Recycled Zip', 'Natural Rubber Elastic', 'Biodegradable Label',
+        'Organic Cotton Thread', 'Eco Hook & Eye', 'Shell Button', 'Recycled Snap',
+      ],
+    },
+    {
+      categoryId: fusingCategory.id,
+      names: [
+        'Lightweight Fusible', 'Medium Interfacing', 'Stiff Canvas Fuse',
+        'Woven Fusing', 'Eco Bamboo Fusing',
+      ],
+    },
+  ];
+
+  for (const group of allMaterials) {
+    for (const name of group.names) {
+      const fiber = faker.helpers.arrayElement([
+        'Cotton', 'Linen', 'Silk', 'Wool', 'Polyester', 'Hemp', 'Bamboo',
+      ]);
+      const baseLength = parseFloat((Math.random() * 100 + 50).toFixed(1));
+
+      const material = await prisma.material.create({
+        data: {
+          name,
+          imageUrl: 'fabric.jpg',
+          categoryId: group.categoryId,
+          fiber,
+          length: baseLength,
+          width: faker.helpers.arrayElement([110, 140, 150, 160]),
+          gsm: parseFloat((Math.random() * 350 + 50).toFixed(1)),
+          color: faker.helpers.arrayElement(['Ivory', 'Navy', 'Charcoal', 'Sand', 'Olive']),
+          texture: faker.helpers.arrayElement(['Smooth', 'Rough', 'Glossy', 'Matte', 'Crinkled']),
+          origin: faker.helpers.arrayElement(['Italy', 'India', 'Vietnam', 'China', 'Peru']),
+          supplier: faker.helpers.arrayElement(['TexWorld', 'GreenTex', 'ButtonCo', 'SilkyTouch']),
+          productCode: `MAT-${Math.floor(Math.random() * 900 + 100)}`,
+          purchaseLocation: faker.helpers.arrayElement(['Hanoi', 'Milan', 'Shanghai', 'Osaka', 'London']),
+          datePurchased: faker.date.past(),
+          pricePerMeter: parseFloat((Math.random() * 20 + 3).toFixed(2)),
+          certifications: Math.random() > 0.5 ? faker.helpers.arrayElement(['OEKO-TEX', 'GOTS', 'GRS']) : '',
+          teamId: team.id,
+        },
+      });
+
+      // Create one pinned note per material
+      await prisma.materialNote.create({
+        data: {
+          content: 'Auto-generated for seed',
+          materialId: material.id,
+          teamMemberId: actualMembers[0].id,
+        },
+      });
+
+      // Material history
+      let currentLength = material.length;
+      const historyEntries = Array.from({ length: 10 }).map(() => {
+        const member = faker.helpers.arrayElement(actualMembers);
+        const delta = parseFloat((Math.random() * 10 + 1).toFixed(1)) * -1;
+        const newLength = parseFloat((currentLength + delta).toFixed(1));
+        const entry = {
+          materialId: material.id,
+          teamMemberId: member.id,
+          previousLength: currentLength,
+          newLength,
+          changedAt: faker.date.recent({ days: 180 }),
+        };
+        currentLength = newLength;
+        return entry;
+      });
+      await prisma.materialHistory.createMany({ data: historyEntries });
+
+      // Additional notes
+      const notes = Array.from({ length: 5 }).map(() => {
+        const member = faker.helpers.arrayElement(actualMembers);
+        return {
+          materialId: material.id,
+          teamMemberId: member.id,
+          content: faker.lorem.sentence(),
+          createdAt: faker.date.recent({ days: 150 }),
+        };
+      });
+      await prisma.materialNote.createMany({ data: notes });
+    }
+  }
+
+  // Performance metrics and growth forecast
   for (const member of actualMembers) {
     await prisma.performanceMetric.createMany({
       data: [60, 75, 90].map(score => ({ memberId: member.id, score })),
@@ -91,70 +189,6 @@ async function main() {
       },
     });
   }
-
-  // Materials
-  const silkSatin = await prisma.material.create({
-    data: {
-      name: 'Silk Satin',
-      categoryId: fabricsCategory.id,
-      fiber: 'Silk',
-      length: 100,
-      width: 150,
-      gsm: 90,
-      color: 'Navy',
-      texture: 'Glossy',
-      origin: 'Italy',
-      supplier: 'SilkyTouch',
-      productCode: 'SS-900',
-      purchaseLocation: 'Milan',
-      datePurchased: new Date(),
-      pricePerMeter: 12.5,
-      certifications: 'OEKO-TEX',
-      notes: 'For premium lining',
-      teamId: team.id,
-    },
-  });
-
-  const corozoButtons = await prisma.material.create({
-    data: {
-      name: 'Corozo Buttons',
-      categoryId: trimsCategory.id,
-      fiber: 'Corozo',
-      length: 0.5,
-      width: 10,
-      gsm: 300,
-      color: 'Ivory',
-      texture: 'Matte',
-      origin: 'Ecuador',
-      supplier: 'ButtonCo',
-      productCode: 'CB-100',
-      purchaseLocation: 'Quito',
-      datePurchased: new Date(),
-      pricePerMeter: 0.2,
-      certifications: '',
-      notes: 'For overcoats',
-      teamId: team.id,
-    },
-  });
-
-  await prisma.materialHistory.createMany({
-    data: [
-      {
-        materialId: silkSatin.id,
-        teamMemberId: actualMembers[0].id,
-        previousLength: 100,
-        newLength: 90,
-        changedAt: new Date('2025-01-30'),
-      },
-      {
-        materialId: corozoButtons.id,
-        teamMemberId: actualMembers[1].id,
-        previousLength: 0.5,
-        newLength: 20.5,
-        changedAt: new Date('2025-02-01'),
-      },
-    ],
-  });
 
   // Projects
   const [ss27, aw27] = await prisma.$transaction([
@@ -180,7 +214,7 @@ async function main() {
     }),
   ]);
 
-  // Member-specific subtask completions
+  // Tasks and subtasks
   const subtaskProgressMap: Record<string, number> = {
     David: 7,
     Lisa: 5,
@@ -191,6 +225,7 @@ async function main() {
   for (const member of actualMembers) {
     const currentProgress = subtaskProgressMap[member.name] ?? 5;
 
+    // Completed tasks
     const completedTasks = Array.from({ length: 19 }).map((_, i) => ({
       name: `Complete Garment ${i + 1} – SHX`,
       subtasks: [
@@ -224,6 +259,7 @@ async function main() {
       });
     }
 
+    // Current task
     const currentTask = await prisma.task.create({
       data: {
         name: `Construct Jacket 06 – SHX`,
@@ -261,9 +297,10 @@ async function main() {
 }
 
 main()
-  .then(async () => await prisma.$disconnect())
+  .then(() => prisma.$disconnect())
   .catch(async (e) => {
     console.error('❌ Seed failed:', e);
+    console.error('📛 Full error stack:', e.stack);
     await prisma.$disconnect();
     process.exit(1);
   });

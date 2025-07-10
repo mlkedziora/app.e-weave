@@ -1,6 +1,5 @@
 generator client {
   provider      = "prisma-client-js"
-  output        = "./node_modules/@prisma/client"
   binaryTargets = ["native"]
 }
 
@@ -11,7 +10,7 @@ datasource db {
 
 model Team {
   id         String             @id @default(cuid())
-  name       String             @unique // ✅ Now usable for upsert or seed lookup
+  name       String             @unique
   members    TeamMember[]
   projects   Project[]
   materials  Material[]
@@ -21,19 +20,20 @@ model Team {
 
 model TeamMember {
   id                 String              @id @default(cuid())
-  userId             String              @unique // Clerk user ID
+  userId             String              @unique
   name               String
-  role               String // 'admin' | 'manager' | 'member'
+  role               String
   position           String?
   startDate          DateTime?
   endDate            DateTime?
   teamId             String
   team               Team                @relation(fields: [teamId], references: [id])
-  assignedTasks      Task[]              @relation("AssignedTasks") // 👈 was `tasks`
-  givenTasks         Task[]              @relation("GivenTasks") // 👈 new field
+  assignedTasks      Task[]              @relation("AssignedTasks")
+  givenTasks         Task[]              @relation("GivenTasks")
   materialHistories  MaterialHistory[]
   performanceMetrics PerformanceMetric[]
   growthForecasts    GrowthForecast[]
+  materialNotes      MaterialNote[]
 }
 
 model Project {
@@ -57,15 +57,14 @@ model Task {
   startedAt   DateTime
   completedAt DateTime?
 
-  // Relations
-  project   Project @relation(fields: [projectId], references: [id])
   projectId String
+  project   Project @relation(fields: [projectId], references: [id])
 
-  assignee   TeamMember @relation("AssignedTasks", fields: [assigneeId], references: [id])
   assigneeId String
+  assignee   TeamMember @relation("AssignedTasks", fields: [assigneeId], references: [id])
 
-  assignedBy   TeamMember @relation("GivenTasks", fields: [assignedById], references: [id])
   assignedById String
+  assignedBy   TeamMember @relation("GivenTasks", fields: [assignedById], references: [id])
 
   subtasks Subtask[]
 
@@ -77,8 +76,8 @@ model Subtask {
   id        String  @id @default(cuid())
   name      String
   completed Boolean @default(false)
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    String
-  task      Task    @relation(fields: [taskId], references: [id])
 }
 
 model PerformanceMetric {
@@ -103,8 +102,9 @@ model GrowthForecast {
 }
 
 model Material {
-  id               String            @id @default(cuid())
+  id               String    @id @default(cuid())
   name             String
+  imageUrl         String?
   categoryId       String
   fiber            String
   length           Float
@@ -119,20 +119,22 @@ model Material {
   datePurchased    DateTime?
   pricePerMeter    Float
   certifications   String?
-  notes            String?
   teamId           String
-  team             Team              @relation(fields: [teamId], references: [id])
-  category         MaterialCategory  @relation(fields: [categoryId], references: [id])
-  history          MaterialHistory[]
-  assignedTo       ProjectMaterial[]
+
+  team     Team             @relation(fields: [teamId], references: [id])
+  category MaterialCategory @relation(fields: [categoryId], references: [id])
+
+  history       MaterialHistory[]
+  assignedTo    ProjectMaterial[]
+  materialNotes MaterialNote[]
 }
 
 model MaterialCategory {
   id        String     @id @default(cuid())
   name      String
-  materials Material[]
   teamId    String
   team      Team       @relation(fields: [teamId], references: [id])
+  materials Material[]
 }
 
 model MaterialHistory {
@@ -152,4 +154,14 @@ model ProjectMaterial {
   materialId String
   project    Project  @relation(fields: [projectId], references: [id])
   material   Material @relation(fields: [materialId], references: [id])
+}
+
+model MaterialNote {
+  id           String     @id @default(cuid())
+  content      String
+  createdAt    DateTime   @default(now())
+  material     Material   @relation(fields: [materialId], references: [id])
+  materialId   String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+  teamMemberId String
 }

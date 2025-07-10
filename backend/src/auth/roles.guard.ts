@@ -3,12 +3,18 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
+  Scope,
+  Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-@Injectable()
+@Injectable({ scope: Scope.DEFAULT }) // ✅ force default scope
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(
+    @Inject(Reflector) private readonly reflector: Reflector, // ✅ explicit injection
+  ) {
+    console.log('✅ RolesGuard initialized:', this.reflector);
+  }
 
   canActivate(context: ExecutionContext): boolean {
     const roles = this.reflector.get<string[]>('roles', context.getHandler());

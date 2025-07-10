@@ -80,7 +80,7 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
             {member.completedTasks.slice(0, 10).map((task: any, i: number) => (
               <li key={i} className="text-gray-700">
                 <span className="font-medium">{task.name}</span>
-                {task.subtasks?.length ? (
+                {/* {task.subtasks?.length ? (
                   <ul className="ml-4 list-disc text-xs text-gray-500 mt-1 space-y-0.5">
                     {task.subtasks.map((sub: any, j: number) => (
                       <li key={j} className="line-through">
@@ -88,7 +88,7 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
                       </li>
                     ))}
                   </ul>
-                ) : null}
+                ) : null} */}
               </li>
             ))}
           </ul>

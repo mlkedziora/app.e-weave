@@ -1,7 +1,6 @@
-// frontend/src/pages/Inventory.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import MaterialList from '../components/inventory/MaterialList'
+import MaterialCategories from '../components/inventory/MaterialCategories'
 import MaterialDetail from '../components/inventory/MaterialDetail'
 
 export default function Inventory() {
@@ -9,7 +8,6 @@ export default function Inventory() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const { getToken } = useAuth()
 
-  // Secure fetch with Clerk JWT
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
@@ -20,13 +18,7 @@ export default function Inventory() {
           },
         })
 
-        if (!res.ok) {
-          throw new Error(`Failed to fetch materials: ${res.status}`)
-        }
-
         const data = await res.json()
-
-        // Ensure it's an array
         if (Array.isArray(data)) {
           setMaterials(data)
         } else {
@@ -50,7 +42,7 @@ export default function Inventory() {
   return (
     <div className="grid grid-cols-3 gap-6 p-6">
       <div className="col-span-1">
-        <MaterialList materials={materials} onMaterialClick={setSelectedId} />
+        <MaterialCategories materials={materials} onMaterialClick={setSelectedId} />
       </div>
       <div className="col-span-2">
         {selected ? (

@@ -13,7 +13,8 @@ import Layout from './layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Inventory from './pages/Inventory'
 import Projects from './pages/Projects'
-import ProjectDetail from './components/projects/ProjectDetail' // 👈 NEW
+import ProjectDetail from './components/projects/ProjectDetail'
+import MaterialDetail from './components/inventory/MaterialDetail' // ✅ NEW
 import Team from './pages/Team'
 import AiChat from './pages/AiChat'
 import AddNew from './pages/AddNew'
@@ -80,6 +81,14 @@ export default function App() {
         }
       />
       <Route
+        path="/inventory/:id" // ✅ NEW — enables MaterialDetail via URL param
+        element={
+          <ProtectedRoute>
+            <Layout><MaterialDetail /></Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/projects"
         element={
           <ProtectedRoute>
@@ -88,7 +97,7 @@ export default function App() {
         }
       />
       <Route
-        path="/projects/:id" // 👈 allows deep linking / SPA routing
+        path="/projects/:id"
         element={
           <ProtectedRoute>
             <Layout><ProjectDetail /></Layout>

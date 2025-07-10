@@ -37,23 +37,27 @@ export class MaterialService {
     }))
   }
 
-  // Used in detail view
-  findOneWithDetails(id: string) {
+  async findOneWithDetails(id: string) {
     return this.prisma.material.findUnique({
       where: { id },
       include: {
         category: true,
         materialNotes: {
+          include: {
+            teamMember: true,
+          },
           orderBy: { createdAt: 'desc' },
-          include: { teamMember: true },
         },
-        materialHistories: {
+        history: {         // 👈 ADD THIS
+          include: {
+            teamMember: true,
+          },
           orderBy: { changedAt: 'desc' },
-          include: { teamMember: true },
         },
       },
     })
   }
+
 
   // Optional: raw material without joins
   findOne(id: string) {

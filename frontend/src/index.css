@@ -66,3 +66,11 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+.material-detail {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.material-detail.loading {
+  opacity: 0.5; /* Or use a skeleton loader */
+}

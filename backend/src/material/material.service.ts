@@ -1,6 +1,7 @@
 import { PrismaService } from '../prisma/prisma.service.js'
 import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
+import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js'
 
 @Injectable()
 export class MaterialService {
@@ -18,7 +19,6 @@ export class MaterialService {
     return this.prisma.material.delete({ where: { id } })
   }
 
-  // Used in index view
   async findAllWithCategoryAndNotes() {
     const materials = await this.prisma.material.findMany({
       include: {
@@ -48,7 +48,7 @@ export class MaterialService {
           },
           orderBy: { createdAt: 'desc' },
         },
-        history: {         // 👈 ADD THIS
+        history: {
           include: {
             teamMember: true,
           },
@@ -58,9 +58,40 @@ export class MaterialService {
     })
   }
 
-
-  // Optional: raw material without joins
   findOne(id: string) {
     return this.prisma.material.findUnique({ where: { id } })
+  }
+
+  async createHistoryEntry(
+    materialId: string,
+    userId: string,
+    dto: CreateMaterialHistoryDto
+  ) {
+    const teamMember = await this.prisma.teamMember.findFirst({
+      where: { userId },
+    });
+
+    if (!teamMember) {
+      console.error(`[MaterialService] TeamMember not found for userId: ${userId}`);
+      throw new Error('Team member not found');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.material.update({
+        where: { id: materialId },
+        data: { length: dto.newLength },
+      });
+      const history = await tx.materialHistory.create({
+        data: {
+          materialId,
+          teamMemberId: teamMember.id,
+          previousLength: dto.previousLength,
+          newLength: dto.newLength,
+          changedAt: dto.changedAt || new Date(),
+        },
+      });
+      console.log('[MaterialService] Created history entry:', history); // Add for confirmation
+      return history;
+    });
   }
 }

@@ -20,6 +20,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: path => path.replace(/^\/api/, ''),
       },
+      '/materials': {  // ✅ New: Proxy for material list/detail fetches
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        // No rewrite needed (backend expects /materials directly)
+      },
     },
   },
 })

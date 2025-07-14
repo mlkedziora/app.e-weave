@@ -1,3 +1,4 @@
+// frontend/src/pages/Inventory.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import MaterialCategories from '../components/inventory/MaterialCategories'
@@ -14,7 +15,7 @@ export default function Inventory() {
     const fetchMaterials = async () => {
       try {
         const token = await getToken()
-        const res = await fetch('http://localhost:3000/materials', {
+        const res = await fetch('/materials', { // ✅ Change to relative URL (assume Vite proxy)
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -36,12 +37,12 @@ export default function Inventory() {
     fetchMaterials()
   }, [getToken])
 
-  // Fetch full material details when one is clicked
-  const handleMaterialClick = async (id: string) => {
+  // Fetch full material details when one is clicked or refreshed
+  const fetchMaterialDetails = async (id: string) => {
     setLoadingDetail(true)
     try {
       const token = await getToken()
-      const res = await fetch(`http://localhost:3000/materials/${id}`, {
+      const res = await fetch(`/materials/${id}?t=${Date.now()}`, { // ✅ Relative URL + cache-bust param
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -50,11 +51,41 @@ export default function Inventory() {
       if (!res.ok) throw new Error(`Failed to fetch material ${id}`)
       const data = await res.json()
       setSelectedMaterial(data)
+      console.log('[Inventory] Updated selectedMaterial with fresh data:', data.length); // ✅ Log to confirm update
     } catch (err) {
       console.error('Error loading material details:', err)
       setSelectedMaterial(null)
     } finally {
       setLoadingDetail(false)
+    }
+  }
+
+  const handleMaterialClick = (id: string) => {
+    fetchMaterialDetails(id)
+  }
+
+  const handleRefresh = (newLength?: number) => { // ✅ Optional newLength param
+    if (selectedMaterial?.id) {
+      console.log('[Inventory] handleRefresh triggered for ID:', selectedMaterial.id);
+      
+      if (newLength !== undefined) {
+        // ✅ Optimistic: Update local state immediately
+        setSelectedMaterial((prev: any) => ({
+          ...prev,
+          length: newLength,
+          history: [
+            {
+              teamMember: { name: 'You' }, // Mock current user
+              previousLength: prev.length,
+              newLength,
+              changedAt: new Date().toISOString(),
+            },
+            ...prev.history,
+          ],
+        }));
+      }
+
+      fetchMaterialDetails(selectedMaterial.id); // Re-fetch to confirm/sync
     }
   }
 
@@ -74,7 +105,7 @@ export default function Inventory() {
         {loadingDetail ? (
           <div className="text-gray-500">Loading material details...</div>
         ) : selectedMaterial ? (
-          <MaterialDetail material={selectedMaterial} />
+          <MaterialDetail material={selectedMaterial} onRefresh={handleRefresh} />
         ) : (
           <div className="text-gray-500 mt-10 text-center">
             Select a material to view details

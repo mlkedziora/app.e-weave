@@ -1,3 +1,4 @@
+// frontend/src/components/inventory/MaterialList.tsx
 type Material = {
   id: string
   name: string

@@ -1,16 +1,19 @@
-import React from 'react'
+// frontend/src/components/inventory/MaterialDetail.tsx
+import React, { useState } from 'react'
+import MaterialHistoryFull from './MaterialHistoryFull'
+import UpdateQuantityModal from './UpdateQuantityModal'
 
 type MaterialDetailProps = {
   material: any
+  onRefresh: (newLength?: number) => void // ✅ Updated to accept optional newLength
 }
 
-export default function MaterialDetail({ material }: MaterialDetailProps) {
+export default function MaterialDetail({ material, onRefresh }: MaterialDetailProps) {
+  const [showFullHistory, setShowFullHistory] = useState(false)
+  const [showUpdateModal, setShowUpdateModal] = useState(false)
+
   if (!material) {
-    return (
-      <div className="p-4 text-red-600">
-        Material not found.
-      </div>
-    )
+    return <div className="p-4 text-red-600">Material not found.</div>
   }
 
   return (
@@ -43,7 +46,6 @@ export default function MaterialDetail({ material }: MaterialDetailProps) {
           [Currently unlinked — backend does not relate tasks to materials]
         </div>
         <button className="mt-2 px-3 py-1 border rounded text-sm">Add Tasks</button>
-        <button className="mt-2 ml-2 px-3 py-1 border rounded text-sm">Expand History</button>
       </div>
 
       {/* QUANTITY TRACKING */}
@@ -63,10 +65,39 @@ export default function MaterialDetail({ material }: MaterialDetailProps) {
             <p className="text-sm italic text-gray-500">No quantity history available.</p>
           )}
         </div>
-        <button className="mt-3 px-3 py-1 border rounded text-sm">Update Quantity</button>
-        <button className="mt-3 ml-2 px-3 py-1 border rounded text-sm">Expand History</button>
-      </div>
+        <button
+          className="mt-3 px-3 py-1 border rounded text-sm"
+          onClick={() => setShowUpdateModal(true)}
+        >
+          Update Quantity
+        </button>
+        <button
+          className="mt-3 ml-2 px-3 py-1 border rounded text-sm"
+          onClick={() => setShowFullHistory(true)}
+        >
+          Expand History
+        </button>
 
+        {showFullHistory && (
+          <MaterialHistoryFull
+            material={material}
+            onClose={() => setShowFullHistory(false)}
+          />
+        )}
+
+        {showUpdateModal && (
+          <UpdateQuantityModal
+            materialId={material.id}
+            currentLength={material.length}
+            onClose={() => setShowUpdateModal(false)}
+            onSuccess={(newLength) => {
+              console.log('[MaterialDetail] onSuccess triggered');
+              setShowUpdateModal(false);
+              onRefresh(newLength); // ✅ Pass newLength up
+            }}
+          />
+        )}
+      </div>
 
       {/* ENVIRONMENTAL IMPACT */}
       <div>

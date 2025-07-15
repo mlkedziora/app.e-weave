@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "Material" ADD COLUMN     "acidification" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "climateChange" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "fossilResourceDepletion" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "freshwaterEcotoxicity" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "freshwaterEutrophication" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "humanToxicityCancer" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "humanToxicityNonCancer" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "ionisingRadiation" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "landUse" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "marineEutrophication" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "mineralResourceDepletion" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "ozoneDepletion" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "particulateMatter" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "photochemicalOzoneFormation" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "terrestrialEutrophication" DOUBLE PRECISION DEFAULT 0.0,
+ADD COLUMN     "waterScarcity" DOUBLE PRECISION DEFAULT 0.0;

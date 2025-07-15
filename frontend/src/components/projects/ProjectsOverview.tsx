@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react' // Import this
 
 interface Project {
   id: string
@@ -15,13 +16,38 @@ export default function ProjectsOverview({
   selectedId: string | null
 }) {
   const [projects, setProjects] = useState<Project[]>([])
+  const [error, setError] = useState<string | null>(null) // Add for error display
+  const { getToken } = useAuth()
 
   useEffect(() => {
-    fetch('http://localhost:3000/projects') // ✅ ADD BACKEND URL
-      .then((res) => res.json())
-      .then((data) => setProjects(data))
-      .catch((err) => console.error('Error fetching projects:', err))
+    const loadProjects = async () => {
+      try {
+        const token = await getToken()
+        const res = await fetch('http://localhost:3000/projects', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`)
+        }
+        const data = await res.json()
+        if (!Array.isArray(data)) {
+          throw new Error('Expected array but received invalid data')
+        }
+        setProjects(data)
+      } catch (err) {
+        console.error('Error fetching projects:', err)
+        setError('Failed to load projects. Please try again.')
+      }
+    }
+
+    loadProjects()
   }, [])
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>
+  }
 
   return (
     <div className="p-4">
@@ -40,8 +66,13 @@ export default function ProjectsOverview({
                 isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'
               }`}
             >
-              <h3 className="text-lg font-medium">{project.name}</h3>
-              <p>{taskCount} tasks</p>
+              <div className="flex items-center space-x-4">
+                <img src="/project.jpg" alt="Project" className="w-[50px] h-[50px] rounded object-cover" />
+                <div>
+                  <h3 className="text-lg font-medium">{project.name}</h3>
+                  <p>{taskCount} tasks</p>
+                </div>
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"

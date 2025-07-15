@@ -27,6 +27,7 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
+    "@clerk/backend": "^2.4.2",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",

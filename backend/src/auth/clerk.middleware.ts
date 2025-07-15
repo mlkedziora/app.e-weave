@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express'
-import { jwtVerify, createRemoteJWKSet } from 'jose'
+import { jwtVerify, createRemoteJWKSet, decodeProtectedHeader } from 'jose'
 
 const JWKS = createRemoteJWKSet(new URL((globalThis as any).process?.env?.CLERK_JWT_JWKS!))
 
@@ -19,9 +19,21 @@ export const clerkMiddleware = async (
   const token = authHeader.split(' ')[1]
 
   try {
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: (globalThis as any).process?.env?.CLERK_JWT_ISSUER!,
-    })
+    const header = decodeProtectedHeader(token)
+    const issuer = (globalThis as any).process?.env?.CLERK_JWT_ISSUER!
+
+    let verified;  // ✅ Use temp var to avoid destructuring TDZ bug in SWC
+
+    if (header.alg === 'HS256') {
+      console.log('[Clerk Middleware] Using HS256 verification');
+      const secret = new TextEncoder().encode((globalThis as any).process?.env?.CLERK_SIGNING_KEY!)
+      verified = await jwtVerify(token, secret, { issuer });
+    } else {
+      console.log('[Clerk Middleware] Using RS256 verification');
+      verified = await jwtVerify(token, JWKS, { issuer });
+    }
+
+    const { payload } = verified;  // ✅ Destructure after assignment
 
     const user = {
       id: payload.sub!,

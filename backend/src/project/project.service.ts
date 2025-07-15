@@ -32,12 +32,52 @@ export class ProjectService {
       include: {
         tasks: {
           include: {
-            assignee: {
-              select: { name: true },
+            assignees: {
+              include: {
+                teamMember: {
+                  select: { name: true },
+                },
+              },
             },
           },
         },
+        assignedMaterials: {
+          include: {
+            material: true,
+          },
+        },
+        notes: {
+          include: {
+            teamMember: {
+              select: { id: true, name: true, userId: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
+    });
+  }
+
+  async addNote(projectId: string, teamMemberId: string, content: string) {
+    return this.prisma.projectNote.create({
+      data: {
+        projectId,
+        teamMemberId,
+        content,
+      },
+    });
+  }
+
+  async updateNote(noteId: string, content: string) {
+    return this.prisma.projectNote.update({
+      where: { id: noteId },
+      data: { content },
+    });
+  }
+
+  async deleteNote(noteId: string) {
+    return this.prisma.projectNote.delete({
+      where: { id: noteId },
     });
   }
 }

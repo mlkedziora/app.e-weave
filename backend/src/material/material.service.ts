@@ -1,5 +1,6 @@
+// backend/src/material/material.service.ts
 import { PrismaService } from '../prisma/prisma.service.js'
-import { Injectable } from '@nestjs/common'
+import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
 import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js'
 
@@ -24,7 +25,7 @@ export class MaterialService {
       include: {
         category: true,
         materialNotes: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { updatedAt: 'desc' },
           include: { teamMember: true },
           take: 3,
         },
@@ -46,7 +47,7 @@ export class MaterialService {
           include: {
             teamMember: true,
           },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { updatedAt: 'desc' },
         },
         history: {
           include: {
@@ -92,6 +93,66 @@ export class MaterialService {
       });
       console.log('[MaterialService] Created history entry:', history); // Add for confirmation
       return history;
+    });
+  }
+
+  async getNotes(materialId: string) {
+    return this.prisma.materialNote.findMany({
+      where: { materialId },
+      include: { teamMember: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+  }
+
+  async addNote(materialId: string, content: string, userId: string) {
+    console.log(`[addNote Service] Looking up teamMember for userId=${userId}`);
+    const teamMember = await this.prisma.teamMember.findFirst({
+      where: { userId },
+    });
+    if (!teamMember) {
+      console.warn(`[addNote Service] No teamMember found for userId=${userId}`);
+      throw new UnauthorizedException('Team member not found');
+    }
+    console.log(`[addNote Service] Found teamMember: ${teamMember.id}`);
+    return this.prisma.materialNote.create({
+      data: {
+        content,
+        materialId,
+        teamMemberId: teamMember.id,
+      },
+      include: { teamMember: true },
+    });
+  }
+
+  async editNote(noteId: string, content: string, userId: string) {
+    const note = await this.prisma.materialNote.findUnique({
+      where: { id: noteId },
+      include: { teamMember: true },
+    });
+
+    if (!note || note.teamMember.userId !== userId) {
+      throw new UnauthorizedException('Not authorized to edit this note');
+    }
+
+    return this.prisma.materialNote.update({
+      where: { id: noteId },
+      data: { content },
+      include: { teamMember: true },
+    });
+  }
+
+  async deleteNote(noteId: string, userId: string) {
+    const note = await this.prisma.materialNote.findUnique({
+      where: { id: noteId },
+      include: { teamMember: true },
+    });
+
+    if (!note || note.teamMember.userId !== userId) {
+      throw new UnauthorizedException('Not authorized to delete this note');
+    }
+
+    return this.prisma.materialNote.delete({
+      where: { id: noteId },
     });
   }
 }

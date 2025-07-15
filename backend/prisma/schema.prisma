@@ -28,12 +28,13 @@ model TeamMember {
   endDate            DateTime?
   teamId             String
   team               Team                @relation(fields: [teamId], references: [id])
-  assignedTasks      Task[]              @relation("AssignedTasks")
+  assignedTasks      TaskAssignee[]
   givenTasks         Task[]              @relation("GivenTasks")
   materialHistories  MaterialHistory[]
   performanceMetrics PerformanceMetric[]
   growthForecasts    GrowthForecast[]
   materialNotes      MaterialNote[]
+  projectNotes       ProjectNote[]
 }
 
 model Project {
@@ -42,11 +43,11 @@ model Project {
   description       String?
   startDate         DateTime?
   deadline          DateTime?
-  notes             String?
   teamId            String
   team              Team              @relation(fields: [teamId], references: [id])
   tasks             Task[]
   assignedMaterials ProjectMaterial[]
+  notes             ProjectNote[]
   createdAt         DateTime          @default(now())
 }
 
@@ -60,13 +61,11 @@ model Task {
   projectId String
   project   Project @relation(fields: [projectId], references: [id])
 
-  assigneeId String
-  assignee   TeamMember @relation("AssignedTasks", fields: [assigneeId], references: [id])
-
   assignedById String
   assignedBy   TeamMember @relation("GivenTasks", fields: [assignedById], references: [id])
 
   subtasks Subtask[]
+  assignees TaskAssignee[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -78,6 +77,15 @@ model Subtask {
   completed Boolean @default(false)
   task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    String
+}
+
+model TaskAssignee {
+  taskId       String
+  teamMemberId String
+  task         Task       @relation(fields: [taskId], references: [id])
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+
+  @@id([taskId, teamMemberId])
 }
 
 model PerformanceMetric {
@@ -127,6 +135,23 @@ model Material {
   history       MaterialHistory[]
   assignedTo    ProjectMaterial[]
   materialNotes MaterialNote[]
+  climateChange               Float? @default(0.0) // kg CO₂-eq
+  ozoneDepletion              Float? @default(0.0) // kg CFC-11-eq
+  humanToxicityCancer         Float? @default(0.0) // CTUh
+  humanToxicityNonCancer      Float? @default(0.0) // CTUh
+  particulateMatter           Float? @default(0.0) // disease incidence
+  ionisingRadiation           Float? @default(0.0) // kBq U-235-eq
+  photochemicalOzoneFormation Float? @default(0.0) // kg NMVOC-eq
+  acidification               Float? @default(0.0) // mol H+-eq
+  terrestrialEutrophication   Float? @default(0.0) // mol N-eq
+  freshwaterEutrophication    Float? @default(0.0) // kg P-eq
+  marineEutrophication        Float? @default(0.0) // kg N-eq
+  freshwaterEcotoxicity       Float? @default(0.0) // CTUe
+  landUse                     Float? @default(0.0) // species-yr
+  waterScarcity               Float? @default(0.0) // m³ world-eq
+  mineralResourceDepletion    Float? @default(0.0) // kg Sb-eq
+  fossilResourceDepletion     Float? @default(0.0) // MJ
+  eScore                      Float  @default(0.0)
 }
 
 model MaterialCategory {
@@ -160,8 +185,20 @@ model MaterialNote {
   id           String     @id @default(cuid())
   content      String
   createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   material     Material   @relation(fields: [materialId], references: [id])
   materialId   String
+  teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
+  teamMemberId String
+}
+
+model ProjectNote {
+  id           String     @id @default(cuid())
+  content      String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  project      Project    @relation(fields: [projectId], references: [id])
+  projectId    String
   teamMember   TeamMember @relation(fields: [teamMemberId], references: [id])
   teamMemberId String
 }

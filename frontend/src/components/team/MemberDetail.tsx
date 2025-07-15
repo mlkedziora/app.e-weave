@@ -1,16 +1,38 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 
 export default function MemberDetail({ memberName }: { memberName: string }) {
   const [member, setMember] = useState<any | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const { getToken } = useAuth()
 
   useEffect(() => {
-    fetch('http://localhost:3000/members') // Ensure this returns nested currentTask + completedTasks + subtasks
-      .then(res => res.json())
-      .then(data => {
+    const loadMembers = async () => {
+      try {
+        const token = await getToken()
+        const res = await fetch('http://localhost:3000/members', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`)
+        }
+        const data = await res.json()
         const match = data.find((m: any) => m.name === memberName)
-        setMember(match)
-      })
+        setMember(match || null)
+      } catch (err) {
+        console.error('Error fetching members:', err)
+        setError('Failed to load member details. Please try again.')
+      }
+    }
+
+    loadMembers()
   }, [memberName])
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>
+  }
 
   if (!member) {
     return (
@@ -33,7 +55,8 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
           className="w-20 h-20 rounded-full object-cover"
         />
         <div>
-          <h2 className="text-2xl font-bold">{member.name}</h2>
+          <h2 className="text-2xl font-bold">INDIVIDUAL PERFORMANCE</h2>
+          <p className="text-sm text-gray-600">NAME: {member.name}</p>
           <p className="text-sm text-gray-600">Position: {member.position ?? '—'}</p>
           <p className="text-sm text-gray-600">
             Start: {start} — End: {end}
@@ -110,6 +133,7 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
       {/* Performance Chart */}
       <div className="mt-8">
         <h3 className="text-lg font-semibold">Performance Chart</h3>
+        <p className="text-sm text-gray-600">TAILORED TO CONTRACT LENGTH</p>
         <img
           src="/performance-chart.png"
           alt="Performance Chart"
@@ -120,6 +144,7 @@ export default function MemberDetail({ memberName }: { memberName: string }) {
       {/* Growth Forecast */}
       <div className="mt-8">
         <h3 className="text-lg font-semibold">Growth Forecast</h3>
+        <p className="text-sm text-gray-600">BASED ON PREVIOUS PERFORMANCE</p>
         <img
           src="/growth-forecast.png"
           alt="Growth Forecast"

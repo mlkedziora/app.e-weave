@@ -1,3 +1,4 @@
+// backend/src/material/material.controller.ts
 import {
   Controller,
   Post,
@@ -56,5 +57,35 @@ export class MaterialController {
     if (!userId) throw new Error('Unauthorized');
 
     return this.materialService.createHistoryEntry(materialId, userId, dto);
-}
+  }
+
+  @Get(':id/notes')
+  async getNotes(@Param('id') id: string) {
+    return this.materialService.getNotes(id);
+  }
+
+  @Post(':id/notes')
+  async addNote(@Param('id') id: string, @Body() body: { content: string }, @Req() req: Request) {
+    console.log(`[addNote Controller] Request: materialId=${id}, body=${JSON.stringify(body)}, user=${JSON.stringify(req.user)}`);
+    const userId = req.user?.id;
+    if (!userId) {
+      console.warn('[addNote Controller] Missing userId from req.user');
+      throw new Error('Unauthorized'); // Temporary log
+    }
+    return this.materialService.addNote(id, body.content, userId);
+  }
+
+  @Patch('notes/:noteId')
+  async editNote(@Param('noteId') noteId: string, @Body() body: { content: string }, @Req() req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new Error('Unauthorized');
+    return this.materialService.editNote(noteId, body.content, userId);
+  }
+
+  @Delete('notes/:noteId')
+  async deleteNote(@Param('noteId') noteId: string, @Req() req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new Error('Unauthorized');
+    return this.materialService.deleteNote(noteId, userId);
+  }
 }

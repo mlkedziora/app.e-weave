@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '@clerk/clerk-react'
 
 export default function TeamList({
   onMemberClick,
@@ -6,12 +7,38 @@ export default function TeamList({
   onMemberClick: (name: string) => void
 }) {
   const [members, setMembers] = useState<any[]>([])
+  const [error, setError] = useState<string | null>(null)
+  const { getToken } = useAuth()
 
   useEffect(() => {
-    fetch('http://localhost:3000/members')
-      .then(res => res.json())
-      .then(setMembers)
+    const loadMembers = async () => {
+      try {
+        const token = await getToken()
+        const res = await fetch('http://localhost:3000/members', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}`)
+        }
+        const data = await res.json()
+        if (!Array.isArray(data)) {
+          throw new Error('Expected array but received invalid data')
+        }
+        setMembers(data)
+      } catch (err) {
+        console.error('Error fetching members:', err)
+        setError('Failed to load team members. Please try again.')
+      }
+    }
+
+    loadMembers()
   }, [])
+
+  if (error) {
+    return <div className="p-4 text-red-500">{error}</div>
+  }
 
   return (
     <div className="space-y-4">

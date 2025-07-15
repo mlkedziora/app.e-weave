@@ -13,6 +13,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 console.log('✅ Step 4: Loaded .env');
 
+// ✅ Add import for middleware
+import { clerkMiddleware } from './auth/clerk.middleware.js';
+
 async function bootstrap() {
   console.log('🚀 Step 5: Entering bootstrap');
   const app = await NestFactory.create(AppModule);
@@ -20,6 +23,10 @@ async function bootstrap() {
 
   app.enableCors();
   console.log('✅ Step 7: Enabled CORS');
+
+  // ✅ Apply middleware globally (ensures all routes are authenticated unless public)
+  app.use(clerkMiddleware);
+  console.log('✅ Step 7.5: Applied Clerk middleware globally');
 
   app.useGlobalPipes(
     new ValidationPipe({

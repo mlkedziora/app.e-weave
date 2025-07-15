@@ -1,6 +1,24 @@
 import { PrismaClient } from '@prisma/client';
 import { faker } from '@faker-js/faker';
 
+function getRandomImpact(fiber: string, category: string, min: number, max: number, precision: number): number {
+  let adjustedMin = min;
+  let adjustedMax = max;
+
+  // Adjust ranges based on fiber for realism (e.g., cotton high water, polyester high fossil)
+  if (fiber === 'Cotton' || fiber === 'Linen') {
+    if (category === 'water') adjustedMax *= 1.5; // Higher water scarcity
+    if (category === 'climate') adjustedMin *= 1.2; // Slightly higher CO2
+  } else if (fiber === 'Polyester') {
+    if (category === 'fossil') adjustedMax *= 1.5; // Higher fossil depletion
+    if (category === 'water') adjustedMin *= 0.5; // Lower water
+  } else if (fiber === 'Wool' || fiber === 'Silk') {
+    if (category === 'land') adjustedMax *= 2; // Higher land use
+  } // Others (Hemp, Bamboo) use base ranges for eco-friendly bias
+
+  return parseFloat((Math.random() * (adjustedMax - adjustedMin) + adjustedMin).toFixed(precision));
+}
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -13,18 +31,20 @@ async function main() {
     create: { name: 'SFTC' },
   });
 
-  // // Clean slate
-  // await prisma.subtask.deleteMany();
-  // await prisma.task.deleteMany();
-  // await prisma.projectMaterial.deleteMany();
-  // await prisma.project.deleteMany();
-  // await prisma.materialHistory.deleteMany();
-  // await prisma.materialNote.deleteMany();
-  // await prisma.material.deleteMany({ where: { teamId: team.id } });
-  // await prisma.materialCategory.deleteMany({ where: { teamId: team.id } });
-  // await prisma.performanceMetric.deleteMany();
-  // await prisma.growthForecast.deleteMany();
-  // await prisma.teamMember.deleteMany({ where: { teamId: team.id } });
+  // Clean slate
+  await prisma.subtask.deleteMany();
+  await prisma.taskAssignee.deleteMany();
+  await prisma.task.deleteMany();
+  await prisma.projectNote.deleteMany();
+  await prisma.projectMaterial.deleteMany();
+  await prisma.project.deleteMany();
+  await prisma.materialHistory.deleteMany();
+  await prisma.materialNote.deleteMany();
+  await prisma.material.deleteMany({ where: { teamId: team.id } });
+  await prisma.materialCategory.deleteMany({ where: { teamId: team.id } });
+  await prisma.performanceMetric.deleteMany();
+  await prisma.growthForecast.deleteMany();
+  await prisma.teamMember.deleteMany({ where: { teamId: team.id } });
 
   // Categories
   const [fabricsCategory, trimsCategory, fusingCategory] = await Promise.all([
@@ -37,7 +57,7 @@ async function main() {
   await prisma.teamMember.createMany({
     data: [
       {
-        userId: 'user_1',
+        userId: 'user_2zPs2klPU4dIx3dhTpEij5t8Jkq',
         name: 'Nathan',
         role: 'admin',
         position: 'Pattern Engineer',
@@ -77,9 +97,10 @@ async function main() {
   });
 
   const actualMembers = await prisma.teamMember.findMany({ where: { teamId: team.id } });
+  const nathan = actualMembers.find(m => m.name === 'Nathan');
 
   // Materials
-  const allMaterials = [
+  const allMaterialsData = [
     {
       categoryId: fabricsCategory.id,
       names: [
@@ -103,7 +124,9 @@ async function main() {
     },
   ];
 
-  for (const group of allMaterials) {
+  const createdMaterials = [];
+
+  for (const group of allMaterialsData) {
     for (const name of group.names) {
       const fiber = faker.helpers.arrayElement([
         'Cotton', 'Linen', 'Silk', 'Wool', 'Polyester', 'Hemp', 'Bamboo',
@@ -129,8 +152,27 @@ async function main() {
           pricePerMeter: parseFloat((Math.random() * 20 + 3).toFixed(2)),
           certifications: Math.random() > 0.5 ? faker.helpers.arrayElement(['OEKO-TEX', 'GOTS', 'GRS']) : '',
           teamId: team.id,
+          climateChange: getRandomImpact(fiber, 'climate', 1, 10, 2),               
+          ozoneDepletion: getRandomImpact(fiber, 'ozone', 0.00001, 0.001, 5),     
+          humanToxicityCancer: getRandomImpact(fiber, 'humanCancer', 1e-7, 1e-5, 8), 
+          humanToxicityNonCancer: getRandomImpact(fiber, 'humanNonCancer', 1e-6, 1e-4, 7), 
+          particulateMatter: getRandomImpact(fiber, 'particulate', 1e-7, 1e-5, 8), 
+          ionisingRadiation: getRandomImpact(fiber, 'radiation', 0.01, 1, 3),      
+          photochemicalOzoneFormation: getRandomImpact(fiber, 'ozoneForm', 0.01, 0.5, 3), 
+          acidification: getRandomImpact(fiber, 'acid', 0.001, 0.1, 3),            
+          terrestrialEutrophication: getRandomImpact(fiber, 'terrEutro', 0.01, 0.5, 3), 
+          freshwaterEutrophication: getRandomImpact(fiber, 'freshEutro', 0.0001, 0.01, 4), 
+          marineEutrophication: getRandomImpact(fiber, 'marineEutro', 0.001, 0.05, 3), 
+          freshwaterEcotoxicity: getRandomImpact(fiber, 'ecoTox', 1, 100, 2),      
+          landUse: getRandomImpact(fiber, 'land', 1e-5, 1e-3, 6),                  
+          waterScarcity: getRandomImpact(fiber, 'water', 1, 50, 2),                
+          mineralResourceDepletion: getRandomImpact(fiber, 'mineral', 1e-6, 1e-4, 7), 
+          fossilResourceDepletion: getRandomImpact(fiber, 'fossil', 10, 100, 2),   
+          eScore: faker.number.int({ min: 50, max: 100 }),
         },
       });
+
+      createdMaterials.push(material);
 
       // Create one pinned note per material
       await prisma.materialNote.create({
@@ -160,7 +202,7 @@ async function main() {
       await prisma.materialHistory.createMany({ data: historyEntries });
 
       // Additional notes
-      const notes = Array.from({ length: 5 }).map(() => {
+      const notes = Array.from({ length: 10 }).map(() => {
         const member = faker.helpers.arrayElement(actualMembers);
         return {
           materialId: material.id,
@@ -190,31 +232,47 @@ async function main() {
     });
   }
 
-  // Projects
-  const [ss27, aw27] = await prisma.$transaction([
-    prisma.project.create({
-      data: {
-        name: 'SS27',
-        description: 'Spring/Summer 2027 Collection based on oceanic textures.',
-        startDate: new Date('2025-01-23'),
-        deadline: new Date('2025-05-23'),
-        notes: 'Following PEFC guidelines and integrating team feedback.',
-        teamId: team.id,
-      },
-    }),
-    prisma.project.create({
-      data: {
-        name: 'AW27',
-        description: 'Autumn/Winter 2027 Outerwear prototypes.',
-        startDate: new Date('2025-06-01'),
-        deadline: new Date('2025-09-01'),
-        notes: 'Focus on circular materials and embroidery finishes.',
-        teamId: team.id,
-      },
-    }),
-  ]);
+  // Projects - 10 random fashion-related
+  const projectNames = [
+    'Haute Couture FW2025',
+    'SS2026 Ready-to-Wear',
+    'AW2025 Streetwear',
+    'Couture Bridal 2026',
+    'Pre-Fall 2025',
+    'Resort 2026',
+    'Menswear SS2027',
+    'Evening Gowns AW2026',
+    'Sustainable Fashion Week 2025',
+    'Capsule Collection FW2026',
+  ];
 
-  // Tasks and subtasks
+  const projects = await prisma.$transaction(
+    projectNames.map(name => prisma.project.create({
+      data: {
+        name,
+        description: faker.lorem.sentence(),
+        startDate: faker.date.future(),
+        deadline: faker.date.future({ years: 1 }),
+        teamId: team.id,
+      },
+    }))
+  );
+
+  // Assign materials to projects
+  const allMaterials = await prisma.material.findMany();
+  for (const project of projects) {
+    const selectedMaterials = faker.helpers.arrayElements(allMaterials, 5);
+    for (const mat of selectedMaterials) {
+      await prisma.projectMaterial.create({
+        data: {
+          projectId: project.id,
+          materialId: mat.id,
+        },
+      });
+    }
+  }
+
+  // Tasks and subtasks for each project
   const subtaskProgressMap: Record<string, number> = {
     David: 7,
     Lisa: 5,
@@ -222,75 +280,103 @@ async function main() {
     Nathan: 7,
   };
 
-  for (const member of actualMembers) {
-    const currentProgress = subtaskProgressMap[member.name] ?? 5;
+  for (const project of projects) {
+    // Assign 3 out of 4 members to this project (leave one out randomly, but Nathan always overview)
+    const assignedMembers = faker.helpers.arrayElements(actualMembers.filter(m => m.name !== 'Nathan'), 2);
+    assignedMembers.push(nathan); // Nathan always in
 
-    // Completed tasks
-    const completedTasks = Array.from({ length: 19 }).map((_, i) => ({
-      name: `Complete Garment ${i + 1} – SHX`,
-      subtasks: [
-        '✓ Prep fabric',
-        '✓ Cut pieces',
-        '✓ Sew components',
-        '✓ Attach trims',
-        '✓ Press garment',
-      ],
-    }));
+    const unassignedMember = actualMembers.find(m => !assignedMembers.includes(m) && m.name !== 'Nathan');
 
-    for (const task of completedTasks) {
-      const t = await prisma.task.create({
-        data: {
-          name: task.name,
-          assigneeId: member.id,
-          projectId: ss27.id,
-          assignedById: member.id,
-          progress: 100,
-          startedAt: new Date('2025-01-01'),
-          completedAt: new Date('2025-01-10'),
-        },
-      });
+    for (const member of assignedMembers) {
+      const currentProgress = subtaskProgressMap[member.name] ?? 5;
 
-      await prisma.subtask.createMany({
-        data: task.subtasks.map(name => ({
-          name,
-          completed: true,
-          taskId: t.id,
-        })),
-      });
+      // Completed tasks (random 5-10)
+      const numCompleted = faker.number.int({ min: 5, max: 10 });
+      const completedTasks = Array.from({ length: numCompleted }).map((_, i) => ({
+        name: `Completed Task ${i + 1} for ${project.name}`,
+        subtasks: Array.from({ length: 5 }).map(() => faker.lorem.words(2)),
+      }));
+
+      for (const taskData of completedTasks) {
+        const t = await prisma.task.create({
+          data: {
+            name: taskData.name,
+            projectId: project.id,
+            assignedById: member.id,
+            progress: 100,
+            startedAt: faker.date.past(),
+            completedAt: faker.date.past(),
+          },
+        });
+
+        // Assign to 1-3 members from assignedMembers
+        const taskAssignees = faker.helpers.uniqueArray(assignedMembers, faker.number.int({ min: 1, max: 3 }));
+        for (const assignee of taskAssignees) {
+          await prisma.taskAssignee.create({
+            data: {
+              taskId: t.id,
+              teamMemberId: assignee.id,
+            },
+          });
+        }
+
+        await prisma.subtask.createMany({
+          data: taskData.subtasks.map(name => ({
+            name,
+            completed: true,
+            taskId: t.id,
+          })),
+        });
+      }
+
+      // Ongoing tasks (2-5 per member, progress 0-90)
+      const numOngoing = faker.number.int({ min: 2, max: 5 });
+      for (let i = 0; i < numOngoing; i++) {
+        const progress = faker.number.int({ min: 0, max: 90 });
+        const t = await prisma.task.create({
+          data: {
+            name: `Ongoing Task ${i + 1} for ${project.name}`,
+            projectId: project.id,
+            assignedById: member.id,
+            progress,
+            startedAt: faker.date.recent(),
+          },
+        });
+
+        // Assign to 1-3 members from assignedMembers
+        const taskAssignees = faker.helpers.uniqueArray(assignedMembers, faker.number.int({ min: 1, max: 3 }));
+        for (const assignee of taskAssignees) {
+          await prisma.taskAssignee.create({
+            data: {
+              taskId: t.id,
+              teamMemberId: assignee.id,
+            },
+          });
+        }
+
+        const subtasks = Array.from({ length: 10 }).map(() => faker.lorem.words(2));
+        const completedCount = Math.floor((progress / 100) * subtasks.length);
+        await prisma.subtask.createMany({
+          data: subtasks.map((name, j) => ({
+            name,
+            completed: j < completedCount,
+            taskId: t.id,
+          })),
+        });
+      }
     }
 
-    // Current task
-    const currentTask = await prisma.task.create({
-      data: {
-        name: `Construct Jacket 06 – SHX`,
-        assigneeId: member.id,
-        projectId: ss27.id,
-        assignedById: member.id,
-        startedAt: new Date('2025-02-01'),
-        progress: currentProgress * 10,
-      },
+    // Project notes
+    const notes = Array.from({ length: 10 }).map(() => {
+      const member = faker.helpers.arrayElement(actualMembers);
+      return {
+        projectId: project.id,
+        teamMemberId: member.id,
+        content: faker.lorem.sentence(),
+        createdAt: faker.date.recent({ days: 150 }),
+      };
     });
-
-    const currentSubtasks = [
-      'Cut bodice',
-      'Cut lining',
-      'Stitch two-piece sleeve',
-      'Place shoulder pads',
-      'Fuse interfacing',
-      'Sew darts',
-      'Attach pockets',
-      'Assemble collar',
-      'Topstitch finish',
-      'Final press',
-    ];
-
-    await prisma.subtask.createMany({
-      data: currentSubtasks.map((name, i) => ({
-        name,
-        completed: i < currentProgress,
-        taskId: currentTask.id,
-      })),
-    });
+    await prisma.projectNote.createMany({ data: notes });
   }
 
   console.log('✅ Seed completed successfully.');

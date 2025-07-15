@@ -14,7 +14,7 @@ export default function Inventory() {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const token = await getToken()
+        const token = await getToken({ template: 'backend-access' })
         const res = await fetch('/materials', { // ✅ Change to relative URL (assume Vite proxy)
           headers: {
             Authorization: `Bearer ${token}`,
@@ -41,7 +41,7 @@ export default function Inventory() {
   const fetchMaterialDetails = async (id: string) => {
     setLoadingDetail(true)
     try {
-      const token = await getToken()
+      const token = await getToken({ template: 'backend-access' })
       const res = await fetch(`/materials/${id}?t=${Date.now()}`, { // ✅ Relative URL + cache-bust param
         headers: {
           Authorization: `Bearer ${token}`,

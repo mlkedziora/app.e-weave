@@ -1,3 +1,4 @@
+// frontend/src/components/inventory/MaterialCategories.tsx
 import { useState } from 'react'
 import MaterialList from './MaterialList'
 
@@ -20,8 +21,8 @@ export default function MaterialCategories({ onMaterialClick, materials }: Props
   const filtered = materials.filter(m => m.category === activeCategory)
 
   return (
-    <div>
-      <div className="flex space-x-2 mb-4 border-b">
+    <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex flex-col overflow-hidden"> {/* Added overflow-hidden */}
+      <div className="flex space-x-2 mb-4 border-b shrink-0"> {/* Added shrink-0 for fixed tabs */}
         {allCategories.map((category) => (
           <button
             key={category}
@@ -43,7 +44,7 @@ export default function MaterialCategories({ onMaterialClick, materials }: Props
         </button>
       </div>
 
-      <MaterialList materials={filtered} onMaterialClick={onMaterialClick} />
+      <MaterialList materials={filtered} onMaterialClick={onMaterialClick} className="flex-1" /> {/* Added flex-1 via prop */}
     </div>
   )
 }

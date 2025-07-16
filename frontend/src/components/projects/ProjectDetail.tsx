@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
+import ItemCard from '../common/ItemCard'
 
 interface TaskAssignee {
   teamMember: {
@@ -147,7 +148,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   return (
     <div className="p-6 space-y-8">
       <h1 className="text-3xl font-bold">PROJECT DETAILS</h1>
-      <img src="/project.jpg" alt="Project" className="w-[50px] h-[50px] rounded object-cover" />
+      <img src="/project.jpg" alt="Project" className="max-w-[100px] max-h-[100px] w-[100px] h-[100px] rounded-full object-cover" />
       <p className="text-xl">PROJECT NAME: {project.name}</p>
       <p>TASKS COUNT: {project.tasks.length}</p>
       <p>START DATE: {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'}</p>
@@ -178,16 +179,15 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       </div>
 
       <h2 className="text-2xl font-bold">ASSIGNED TEAM MEMBERS</h2>
-      {visibleMembers.map((member, index) => (
-        <div key={index} className="flex items-center space-x-4">
-          <img src="/profile-icon.jpg" alt="Profile" className="w-[50px] h-[50px] rounded-full object-cover" />
-          <div>
+      <div className="space-y-4">
+        {visibleMembers.map((member, index) => (
+          <ItemCard key={index} imageSrc="/profile-icon.jpg" alt="Profile">
             <p>NAME: {member.name}</p>
             <p>TASK: {member.task}</p>
             <p>% OF COMPLETION: {member.completion}</p>
-          </div>
-        </div>
-      ))}
+          </ItemCard>
+        ))}
+      </div>
       <div className="flex gap-4">
         <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">ADD TEAM MEMBER</button>
         <button
@@ -222,14 +222,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       </div>
       <div className="space-y-4">
         {visibleMaterials.map((material) => (
-          <div key={material.id} className="flex items-center space-x-4">
-            <img src="/fabric.jpg" alt="Fabric" className="w-[50px] h-[50px] rounded object-cover" />
-            <div>
-              <h3 className="font-semibold text-lg">PRODUCT NAME: {material.name}</h3>
-              <p className="text-sm text-gray-600">QUANTITY AVAILABLE: {material.length}m</p>
-              <p className="text-sm text-gray-500">E-SCORE {material.eScore} / 100</p>
-            </div>
-          </div>
+          <ItemCard key={material.id} imageSrc="/fabric.jpg" alt="Fabric">
+            <h3 className="font-semibold text-lg">PRODUCT NAME: {material.name}</h3>
+            <p className="text-sm text-gray-600">QUANTITY AVAILABLE: {material.length}m</p>
+            <p className="text-sm text-gray-500">E-SCORE {material.eScore} / 100</p>
+          </ItemCard>
         ))}
       </div>
       <div className="flex gap-4">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react' // Import this
+import ItemCard from '../common/ItemCard'
 
 interface Project {
   id: string
@@ -62,17 +63,12 @@ export default function ProjectsOverview({
             <div
               key={project.id}
               onClick={() => onSelect(project.id)}
-              className={`cursor-pointer border p-4 rounded-lg shadow ${
-                isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'
-              }`}
+              className={`cursor-pointer border p-4 rounded-lg shadow ${isSelected ? 'bg-blue-100' : 'hover:bg-gray-50'}`}
             >
-              <div className="flex items-center space-x-4">
-                <img src="/project.jpg" alt="Project" className="w-[50px] h-[50px] rounded object-cover" />
-                <div>
-                  <h3 className="text-lg font-medium">{project.name}</h3>
-                  <p>{taskCount} tasks</p>
-                </div>
-              </div>
+              <ItemCard imageSrc="/project.jpg" alt="Project">
+                <h3 className="text-lg font-medium">{project.name}</h3>
+                <p>{taskCount} tasks</p>
+              </ItemCard>
               <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"

@@ -1,4 +1,4 @@
-// frontend/src/components/inventory/MaterialDetail.tsx
+// frontend/src/components/inventory/MaterialDetail.tsx (minimal changes: already well-set for internal scroll; ensured consistency)
 import React, { useState } from 'react'
 import MaterialHistoryFull from './MaterialHistoryFull'
 import UpdateQuantityModal from './UpdateQuantityModal'
@@ -6,7 +6,7 @@ import AdditionalMetrics from './AdditionalMetrics'
 import EditNoteModal from './EditNoteModal'
 import AddNoteModal from './AddNoteModal'
 import AllNotesModal from './AllNotesModal'
-import { useUser, useAuth } from '@clerk/clerk-react' // Adjust if using Next.js or other
+import { useUser, useAuth } from '@clerk/clerk-react'
 
 type MaterialDetailProps = {
   material: any
@@ -23,18 +23,18 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   const [showAllNotes, setShowAllNotes] = useState(false)
 
   const { user: currentUser } = useUser()
-  const { getToken } = useAuth()  // ✅ Move hook to top level (unconditional)
+  const { getToken } = useAuth()
 
   const refreshNotes = () => {
-    onRefresh() // Assumes onRefresh fetches updated material
+    onRefresh()
   }
 
   if (!material) {
-    return <div className="p-4 text-red-600">Material not found.</div>
+    return <div className="w-full p-4 text-gray-500 bg-white rounded-lg shadow-md text-black h-full flex items-center justify-center">Select a material to view details.</div> 
   }
 
   return (
-    <div className="space-y-10 bg-white p-6 rounded shadow-md">
+    <div className="w-full space-y-10 bg-white p-6 rounded-lg shadow-md text-black overflow-y-auto h-full"> {/* Internal scroll, full height */}
       {/* FABRIC DETAILS */}
       <div>
         <h2 className="text-2xl font-bold mb-4">FABRIC DETAILS</h2>

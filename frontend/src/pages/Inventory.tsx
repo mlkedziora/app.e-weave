@@ -89,11 +89,11 @@ export default function Inventory() {
     }
   }
 
-  if (!materials) return <div className="p-4">Loading materials...</div>
-  if (materials.length === 0) return <div className="p-4 text-red-600">No materials found.</div>
+  if (!materials) return <div className="h-full flex items-center justify-center p-4">Loading materials...</div>
+  if (materials.length === 0) return <div className="h-full flex items-center justify-center p-4 text-red-600">No materials found.</div>
 
   return (
-    <div className="grid grid-cols-3 gap-6 p-6">
+    <div className="h-full grid grid-cols-3 gap-6 p-6 overflow-hidden">
       <div className="col-span-1">
         <MaterialCategories
           materials={materials}
@@ -103,11 +103,13 @@ export default function Inventory() {
 
       <div className="col-span-2">
         {loadingDetail ? (
-          <div className="text-gray-500">Loading material details...</div>
+          <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">
+            Loading material details...
+          </div>
         ) : selectedMaterial ? (
           <MaterialDetail material={selectedMaterial} onRefresh={handleRefresh} />
         ) : (
-          <div className="text-gray-500 mt-10 text-center">
+          <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">
             Select a material to view details
           </div>
         )}

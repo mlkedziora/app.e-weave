@@ -13,12 +13,12 @@ type Props = {
 
 export default function MaterialList({ materials, onMaterialClick }: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-y-auto h-full"> {/* Internal scroll, full height */}
       {materials.map(material => (
         <div
           key={material.id}
           onClick={() => onMaterialClick(material.id)}
-          className="cursor-pointer p-4 bg-white border rounded-lg shadow hover:shadow-md transition"
+          className="cursor-pointer p-4 bg-white border rounded-lg shadow hover:shadow-md transition text-black"
         >
           <div className="flex items-center space-x-4">
             <div className="w-16 h-16 bg-gray-200 rounded" />

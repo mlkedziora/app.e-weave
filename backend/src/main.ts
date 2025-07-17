@@ -19,6 +19,10 @@ import { clerkMiddleware } from './auth/clerk.middleware.js';
 async function bootstrap() {
   console.log('🚀 Step 5: Entering bootstrap');
   const app = await NestFactory.create(AppModule);
+
+  console.log('All process.env:', process.env); // Should show DATABASE_URL, CLERK_JWT_ISSUER, etc.
+  
+
   console.log('✅ Step 6: Created Nest app');
 
   app.enableCors();

@@ -1,5 +1,6 @@
 // frontend/src/layout/Sidebar.tsx
 import { Link, useLocation } from 'react-router-dom'
+import Typography from '../components/common/Typography'
 
 const navItems = [
   { path: '/add-new', label: 'ADD NEW' },
@@ -13,24 +14,24 @@ export default function Sidebar() {
   const { pathname } = useLocation()
 
   return (
-    <aside className="w-[--sidebar-width] h-screen bg-white border-r p-4 flex flex-col justify-between">
+    <aside className="w-[calc(0.8*var(--sidebar-width))] h-screen bg-white border-r p-6 flex flex-col justify-between"> {/* ✅ Increased padding */}
       <div>
-        <h1 className="text-2xl font-bold mb-8">e-Weave</h1>
-        <nav className="space-y-2">
+        <Typography variant="20" weight="light" className="tracking-[3px] text-black mb-10">e-Weave</Typography> {/* ✅ Adjusted size close to 1rem (16px~17px), increased mb */}
+        <nav className="space-y-4"> {/* ✅ Increased space-y for airiness */}
           {navItems.map(({ path, label }) => (
             <Link
               key={path}
               to={path}
-              className={`block px-2 py-1 rounded ${
-                pathname === path ? 'bg-gray-300 font-semibold' : ''
+              className={`block px-2 py-1 rounded text-black hover:underline hover:text-gray-800 ${
+                pathname === path ? 'bg-gray-100' : ''
               }`}
             >
-              {label}
+              <Typography variant="15" className="text-black">{label}</Typography>
             </Link>
           ))}
         </nav>
       </div>
-      <div className="text-sm text-gray-600">BRAND/COMPANY</div>
+      <Typography variant="13" className="text-black">BRAND/COMPANY</Typography>
     </aside>
   )
 }

@@ -1,4 +1,4 @@
-// frontend/src/components/inventory/MaterialDetail.tsx (minimal changes: already well-set for internal scroll; ensured consistency)
+// frontend/src/components/inventory/MaterialDetail.tsx
 import React, { useState } from 'react'
 import MaterialHistoryFull from './MaterialHistoryFull'
 import UpdateQuantityModal from './UpdateQuantityModal'
@@ -7,6 +7,10 @@ import EditNoteModal from './EditNoteModal'
 import AddNoteModal from './AddNoteModal'
 import AllNotesModal from './AllNotesModal'
 import { useUser, useAuth } from '@clerk/clerk-react'
+import ScrollablePanel from '../common/ScrollablePanel' // ✅ Use for panel + scroll
+import EmptyPanel from '../common/EmptyPanel' // ✅ Use for no-material state
+import Typography from '../common/Typography'
+import StyledLink from '../common/StyledLink'
 
 type MaterialDetailProps = {
   material: any
@@ -30,70 +34,70 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   }
 
   if (!material) {
-    return <div className="w-full p-4 text-gray-500 bg-white rounded-lg shadow-md text-black h-full flex items-center justify-center">Select a material to view details.</div> 
+    return <EmptyPanel>Select a material to view details.</EmptyPanel> // ✅ Use reusable
   }
 
   return (
-    <div className="w-full space-y-10 bg-white p-6 rounded-lg shadow-md text-black overflow-y-auto h-full"> {/* Internal scroll, full height */}
+    <ScrollablePanel className="space-y-12"> {/* ✅ Increased spacing for airiness */}
       {/* FABRIC DETAILS */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">FABRIC DETAILS</h2>
-        <div className="flex gap-6">
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">FABRIC DETAILS</Typography>
+        <div className="flex gap-8"> {/* ✅ Increased gap for airiness */}
           <img
             src="/fabric.jpg"
             alt="Fabric"
             className="w-48 h-48 object-cover rounded"
           />
-          <div className="space-y-2">
-            <p><strong>Product Name:</strong> {material.name}</p>
-            <p><strong>ID:</strong> {material.id}</p>
-            <p><strong>Quantity Available:</strong> {material.length} m</p>
-            <p><strong>Composition:</strong> {material.fiber}</p>
-            <p><strong>Supplier:</strong> {material.supplier}</p>
-            <p><strong>Price:</strong> ${material.pricePerMeter}</p>
-            <p><strong>Certifications:</strong> {material.certifications || '—'}</p>
+          <div className="space-y-4"> {/* ✅ Increased to space-y-4 for airiness */}
+            <Typography variant="15" className="text-black">Product Name: {material.name}</Typography>
+            <Typography variant="15" className="text-black">ID: {material.id}</Typography>
+            <Typography variant="15" className="text-black">Quantity Available: {material.length} m</Typography>
+            <Typography variant="15" className="text-black">Composition: {material.fiber}</Typography>
+            <Typography variant="15" className="text-black">Supplier: {material.supplier}</Typography>
+            <Typography variant="15" className="text-black">Price: ${material.pricePerMeter}</Typography>
+            <Typography variant="15" className="text-black">Certifications: {material.certifications || '—'}</Typography>
           </div>
         </div>
       </div>
 
       {/* ASSIGNED TASKS */}
       <div>
-        <h2 className="text-2xl font-bold mb-2">ASSIGNED TASKS</h2>
-        <div className="text-gray-600 italic">
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-2 text-black">ASSIGNED TASKS</Typography>
+        <Typography variant="13" className="text-black italic">
           [Currently unlinked — backend does not relate tasks to materials]
-        </div>
-        <button className="mt-2 px-3 py-1 border rounded text-sm">Add Tasks</button>
+        </Typography>
+        <StyledLink onClick={() => {}} className="mt-4 text-black block">Add Tasks</StyledLink> {/* ✅ Block for new line */}
       </div>
 
       {/* QUANTITY TRACKING */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">TRACK QUANTITY</h2>
-        <div className="space-y-2">
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">TRACK QUANTITY</Typography>
+        <div className="space-y-4"> {/* ✅ Increased spacing */}
           {Array.isArray(material.history) && material.history.length > 0 ? (
             material.history.slice(0, 6).map((entry: any, i: number) => (
-              <div key={i} className="border p-3 rounded bg-gray-50">
-                <p><strong>User Taking:</strong> {entry.teamMember?.name || 'Unknown'}</p>
-                <p><strong>Previous Amount:</strong> {entry.previousLength} m</p>
-                <p><strong>New Amount:</strong> {entry.newLength} m</p>
-                <p><strong>Timestamp:</strong> {new Date(entry.changedAt).toLocaleString()}</p>
+              <div key={i} className="border p-4 rounded bg-gray-50 space-y-2"> {/* ✅ Increased padding */}
+                <Typography variant="15" className="text-black">User Taking: {entry.teamMember?.name || 'Unknown'}</Typography>
+                <Typography variant="15" className="text-black">Previous Amount: {entry.previousLength} m</Typography>
+                <Typography variant="15" className="text-black">New Amount: {entry.newLength} m</Typography>
+                <Typography variant="15" className="text-black">Timestamp: {new Date(entry.changedAt).toLocaleString()}</Typography>
               </div>
             ))
           ) : (
-            <p className="text-sm italic text-gray-500">No quantity history available.</p>
+            <Typography variant="13" className="text-black italic">No quantity history available.</Typography>
           )}
         </div>
-        <button
-          className="mt-3 px-3 py-1 border rounded text-sm"
+        <StyledLink
           onClick={() => setShowUpdateModal(true)}
+          className="mt-4 text-black block"
         >
           Update Quantity
-        </button>
-        <button
-          className="mt-3 ml-2 px-3 py-1 border rounded text-sm"
+        </StyledLink>
+        <StyledLink
           onClick={() => setShowFullHistory(true)}
+          className="mt-4 ml-0 text-black block" 
         >
           Expand History
-        </button>
+        </StyledLink>
 
         {showFullHistory && (
           <MaterialHistoryFull
@@ -118,17 +122,17 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* ENVIRONMENTAL IMPACT */}
       <div>
-        <h2 className="text-2xl font-bold">ENVIRONMENTAL IMPACT</h2>
-        <h3 className="text-sm text-gray-500 mb-4">Prototype – Based on PEFCR Guidelines</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <p><strong>CO₂ eq (kg):</strong> {material.climateChange}</p>
-          <p><strong>Fossil Energy (MJ):</strong> {material.fossilResourceDepletion}</p>
-          <p><strong>Water (m³):</strong> {material.waterScarcity}</p>
-          <p><strong>Freshwater P eq (kg):</strong> {material.freshwaterEutrophication}</p>
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">ENVIRONMENTAL IMPACT</Typography>
+        <Typography variant="13" className="text-black mb-4">Prototype – Based on PEFCR Guidelines</Typography>
+        <div className="grid grid-cols-2 gap-6"> {/* ✅ Increased gap */}
+          <Typography variant="15" className="text-black">CO₂ eq (kg): {material.climateChange}</Typography>
+          <Typography variant="15" className="text-black">Fossil Energy (MJ): {material.fossilResourceDepletion}</Typography>
+          <Typography variant="15" className="text-black">Water (m³): {material.waterScarcity}</Typography>
+          <Typography variant="15" className="text-black">Freshwater P eq (kg): {material.freshwaterEutrophication}</Typography>
         </div>
-        <button className="mt-3 px-3 py-1 border rounded text-sm" onClick={() => setShowAdditionalMetrics(true)}>
+        <StyledLink onClick={() => setShowAdditionalMetrics(true)} className="mt-4 text-black block">
           Additional Metrics +
-        </button>
+        </StyledLink>
 
         {showAdditionalMetrics && (
           <AdditionalMetrics material={material} onClose={() => setShowAdditionalMetrics(false)} />
@@ -137,52 +141,51 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* TRANSPORT */}
       <div>
-        <h2 className="text-2xl font-bold">TRANSPORT</h2>
-        <h3 className="text-sm text-gray-500 mb-2">Prototype – Based on User Input</h3>
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">TRANSPORT</Typography>
+        <Typography variant="13" className="text-black mb-2">Prototype – Based on User Input</Typography>
         <img
           src="/map.png"
           alt="Transport Map"
-          className="w-full max-w-md rounded mb-2"
+          className="w-full max-w-md rounded mb-4" 
         />
-        <p className="text-sm text-gray-600">
+        <Typography variant="13" className="text-black">
           The transportation of this fabric to your studio used an estimated amount of resources based on fastest available transport information.
-        </p>
+        </Typography>
       </div>
 
       {/* RECENT NOTES */}
       <div>
-        <h2 className="text-2xl font-bold">RECENT NOTES</h2>
-        <h3 className="text-sm text-gray-500 mb-4">Quantity Available: {material.length} m</h3>
-        <div className="space-y-3">
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">RECENT NOTES</Typography>
+        <Typography variant="13" className="text-black mb-4">Quantity Available: {material.length} m</Typography>
+        <div className="space-y-4"> {/* ✅ Increased spacing */}
           {material.materialNotes?.slice(0, 3).map((note: any, i: number) => (
-            <div key={i} className="border p-3 rounded bg-gray-50">
-              <p className="text-sm text-gray-600">
+            <div key={i} className="border p-4 rounded bg-gray-50 space-y-2"> {/* ✅ Increased padding */}
+              <Typography variant="13" className="text-black">
                 {note.teamMember?.name || 'Unknown'} – {new Date(note.updatedAt || note.createdAt).toLocaleString()}
-              </p>
-              <p>{note.content}</p>
+              </Typography>
+              <Typography variant="15" className="text-black">{note.content}</Typography>
               {note.teamMember?.userId === currentUser?.id && (
-                <div className="mt-1 flex gap-2">
-                  <button
-                    className="text-xs underline text-blue-600"
+                <div className="mt-2 flex gap-4"> {/* ✅ Increased mt and gap */}
+                  <StyledLink
                     onClick={() => {
                       setSelectedNote(note);
                       setShowEditModal(true);
                     }}
+                    className="text-black text-[13px]"
                   >
                     Edit
-                  </button>
-                  <button
-                    className="text-xs underline text-red-500"
+                  </StyledLink>
+                  <StyledLink
                     onClick={async () => {
                       if (confirm('Delete this note?')) {
                         try {
-                          const token = await getToken({ template: 'backend-access' });  // ✅ Use template
+                          const token = await getToken({ template: 'backend-access' });
                           const res = await fetch(`/materials/notes/${note.id}`, {
                             method: 'DELETE',
                             headers: { Authorization: `Bearer ${token}` },
                           });
                           if (!res.ok) {
-                            const errorBody = await res.json(); // or res.text() if not JSON
+                            const errorBody = await res.json();
                             console.error(`[DeleteNote] Failed: Status ${res.status}, Body:`, errorBody);
                             alert('Failed to delete');
                           } else {
@@ -195,20 +198,21 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
                         }
                       }
                     }}
+                    className="text-black text-[13px]"
                   >
                     Delete
-                  </button>
+                  </StyledLink>
                 </div>
               )}
             </div>
           ))}
         </div>
-        <button className="mt-3 px-3 py-1 border rounded text-sm" onClick={() => setShowAllNotes(true)}>
+        <StyledLink onClick={() => setShowAllNotes(true)} className="mt-4 text-black block">
           Expand History
-        </button>
-        <button className="mt-3 ml-2 px-3 py-1 border rounded text-sm" onClick={() => setShowAddModal(true)}>
+        </StyledLink>
+        <StyledLink onClick={() => setShowAddModal(true)} className="mt-4 ml-0 text-black block">
           Add Note
-        </button>
+        </StyledLink>
 
         {showEditModal && selectedNote && (
           <EditNoteModal note={selectedNote} onClose={() => setShowEditModal(false)} onSuccess={() => { setShowEditModal(false); refreshNotes(); }} />
@@ -222,6 +226,6 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           <AllNotesModal notes={material.materialNotes} onClose={() => setShowAllNotes(false)} />
         )}
       </div>
-    </div>
+    </ScrollablePanel>
   )
 }

@@ -25,6 +25,10 @@ export default defineConfig({
         target: 'http://localhost:3000',
         changeOrigin: true,
       },
+      '/projects': {  // ✅ Add this proxy for /projects and subpaths
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+      },
     },
   },
 })

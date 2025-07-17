@@ -17,6 +17,9 @@ export const clerkMiddleware = async (
   }
 
   const token = authHeader.split(' ')[1]
+  console.log('[Clerk Middleware] Token:', token.substring(0, 20) + '...') // Partial log for security
+  console.log('[Clerk Middleware] Env Issuer:', process.env.CLERK_JWT_ISSUER)
+  console.log('[Clerk Middleware] Env JWKS URL:', process.env.CLERK_JWT_JWKS)
 
   try {
     const header = decodeProtectedHeader(token)

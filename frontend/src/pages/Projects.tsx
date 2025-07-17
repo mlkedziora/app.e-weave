@@ -6,15 +6,18 @@ export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
   return (
-    <div className="flex flex-col md:flex-row h-full w-full overflow-hidden">
-      <div className="md:w-1/2 overflow-y-auto">
+    <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden">
+      <div className="col-span-1 h-full">
         <ProjectsOverview onSelect={setSelectedProjectId} selectedId={selectedProjectId} />
       </div>
-      <div className="md:w-1/2 border-l overflow-y-auto">
+
+      <div className="col-span-2 h-full">
         {selectedProjectId ? (
           <ProjectDetail projectId={selectedProjectId} />
         ) : (
-          <div className="p-6 text-gray-500">Select a project to view details</div>
+          <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">
+            Select a project to view details
+          </div>
         )}
       </div>
     </div>

@@ -5,7 +5,7 @@ import Typography from '../components/common/Typography'
 
 export default function Topbar() {
   return (
-    <header className="flex items-center bg-transparent z-10 fixed w-[--main-width] p-4 gap-70"> {/* ✅ Use gap-[70px] or modify the arbitrary value for equal space between the three groups */}
+    <header className="flex items-center bg-transparent z-10 fixed w-[--main-width] p-4 gap-80"> {/* ✅ Use gap-[70px] or modify the arbitrary value for equal space between the three groups */}
       <div className="flex items-center gap-4">
         <button title="Toggle dark mode">
           <img src="/night.png" alt="Dark mode" width={22} height={22} />
@@ -19,7 +19,7 @@ export default function Topbar() {
           <input
             type="text"
             placeholder="ENTER YOUR SEARCH KEY WORD"
-            className="w-full h-10 py-2 rounded-full bg-white pr-10 text-black placeholder:text-black outline-none focus:shadow-[0_0_10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)]" // ✅ Glossy effect on focus is in focus:shadow-[...]; erase this part if not liked
+            className="w-full h-8.5 px-4 py-2 rounded-full bg-white pr-10 text-[13px] placeholder:text-[13px] text-black placeholder:text-black outline-none focus:shadow-[0_0_10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)]" // ✅ Adjust text-[13px] and placeholder:text-[13px] for text size (e.g., text-[12px]); px-4 controls distance from borders (adjust px- value, e.g., px-6); glossy effect on focus is in focus:shadow-[...]; erase this part if not liked
           />
           <img
             src="/search.png"

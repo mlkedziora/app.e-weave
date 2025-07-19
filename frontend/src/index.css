@@ -33,10 +33,11 @@ a:hover {
 body {
   margin: 0;
   display: flex;
-  place-items: center;
+  /* place-items: center; */ /* ✅ Comment out or remove to prevent centering shrinkage */
   min-width: 320px;
   min-height: 100vh;
   text-transform: uppercase;
+  width: 100%; /* ✅ Add for full viewport width */
 }
 
 html {
@@ -52,6 +53,7 @@ body {
 #root {
   height: 100%;
   overflow: hidden;
+  width: 100%; /* ✅ Add to force full width */
 }
 
 h1 {

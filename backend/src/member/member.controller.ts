@@ -1,10 +1,25 @@
 // backend/src/member/member.controller.ts
-import { Controller, Get, Param } from '@nestjs/common'
-import { MemberService } from './member.service.js'
+import { Controller, Get, Post, Body, Param, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express'; // New
+import { MemberService } from './member.service.js';
+import { CreateTeamMemberDto } from './dto/create-team-member.dto.js'; 
+import express from 'express';
+type Request = express.Request;
 
 @Controller('members')
 export class MemberController {
   constructor(private readonly memberService: MemberService) {}
+
+  @Post()
+  @UseInterceptors(FileInterceptor('image')) // New
+  async create(
+    @Body() dto: CreateTeamMemberDto,
+    @UploadedFile() image: Express.Multer.File, // New
+    @Req() req: Request
+  ) {
+    const userId = req.user?.id;
+    return this.memberService.create(dto, userId, image);
+  }
 
   @Get()
   findAll() {

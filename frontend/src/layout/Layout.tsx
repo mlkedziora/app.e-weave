@@ -1,18 +1,28 @@
-// frontend/src/layout/Layout.tsx
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import type { ReactNode } from 'react'
 
 export default function Layout({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex h-screen w-screen [--sidebar-width:20%] [--main-width:80%]"> {/* Full screen, variables for widths */}
-      <Sidebar />
-      <div className="flex flex-col w-[--main-width] bg-[#ECECEC]"> {/* Full height/width fill */}
-        <Topbar />
-        <main className="flex-1 overflow-y-auto p-6 pt-20 bg-[#ECECEC]"> {/* Ensure background fill, pt-20 for topbar */}
-          {children}
-        </main>
+    <>
+      {/* Option 1: Fixed background (recommended for performance/simplicity - always covers full main area behind content) */}
+      <div className="fixed inset-0 bg-[#ECECEC] z-[-1]" /> {/* Fixed full-screen #ECECEC background, z-[-1] to stay behind everything */}
+      
+      {/* Option 2: Absolute background (alternative - relative to parent, covers full but may shift on scroll; uncomment to try */}
+      {/* <div className="absolute inset-0 bg-[#ECECEC] z-[-1]" /> */}
+      
+      {/* Option 3: Relative background (default behavior - flows with content, may not cover if content short; uncomment to try */}
+      {/* <div className="relative bg-[#ECECEC] z-[-1]" style={{ height: '100vh', width: '100vw' }} /> */}
+      
+      <div className="flex h-screen w-screen [--sidebar-width:20%] [--main-width:80%]"> {/* Full screen, variables for widths */}
+        <Sidebar className="w-[var(--sidebar-width)]" /> {/* Added width class; adjust if Sidebar handles it internally */}
+        <div className="flex flex-col w-[var(--main-width)]"> {/* Fixed: added var() for proper CSS variable usage */}
+          <Topbar />
+          <main className="flex-1 overflow-y-auto pt-20"> {/* Remove bg and p-6 if needed; let children/pages handle padding */}
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

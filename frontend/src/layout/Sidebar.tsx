@@ -14,7 +14,7 @@ export default function Sidebar() {
   const { pathname } = useLocation()
 
   return (
-    <aside className="w-[calc(0.8*var(--sidebar-width))] h-screen bg-white border-r p-6 flex flex-col justify-between"> {/* ✅ Increased padding */}
+    <aside className="w-[calc(0.85*var(--sidebar-width))] h-screen bg-white border-r p-6 flex flex-col justify-between"> {/* ✅ Increased padding */}
       <div>
         <Typography variant="20" weight="light" className="tracking-[3px] text-black mb-10">e-Weave</Typography> {/* ✅ Adjusted size close to 1rem (16px~17px), increased mb */}
         <nav className="space-y-4"> {/* ✅ Increased space-y for airiness */}

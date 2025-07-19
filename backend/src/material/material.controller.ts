@@ -8,10 +8,14 @@ import {
   Patch,
   Delete,
   Req,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MaterialService } from './material.service.js';
-import { Prisma } from '@prisma/client';
+import { CreateMaterialDto } from '../material/dto/create-material.dto.js'; // Fixed import
 import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
+import { Prisma } from '@prisma/client';
 import express from 'express';
 type Request = express.Request;
 
@@ -20,8 +24,14 @@ export class MaterialController {
   constructor(private readonly materialService: MaterialService) {}
 
   @Post()
-  create(@Body() data: Prisma.MaterialCreateInput) {
-    return this.materialService.create(data);
+  @UseInterceptors(FileInterceptor('image'))
+  async create(
+    @Body() dto: CreateMaterialDto,
+    @UploadedFile() image: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    const userId = req.user?.id;
+    return this.materialService.create(dto, userId, image);
   }
 
   @Get()
@@ -48,10 +58,10 @@ export class MaterialController {
   createHistoryEntry(
     @Param('id') materialId: string,
     @Body() dto: CreateMaterialHistoryDto,
-    @Req() req: Request
+    @Req() req: Request,
   ) {
     console.log('[MaterialController] Received DTO:', dto);
-    console.log('[MaterialController] req.user:', req.user); // ✅ Add this
+    console.log('[MaterialController] req.user:', req.user);
 
     const userId = req.user?.id;
     if (!userId) throw new Error('Unauthorized');
@@ -70,7 +80,7 @@ export class MaterialController {
     const userId = req.user?.id;
     if (!userId) {
       console.warn('[addNote Controller] Missing userId from req.user');
-      throw new Error('Unauthorized'); // Temporary log
+      throw new Error('Unauthorized');
     }
     return this.materialService.addNote(id, body.content, userId);
   }

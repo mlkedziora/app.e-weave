@@ -1,10 +1,25 @@
 // backend/src/project/project.controller.ts
-import { Controller, Get, Post, Patch, Delete, Param, Body, NotFoundException, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, NotFoundException, Req, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express'; // New
 import { ProjectService } from './project.service.js';
+import { CreateProjectDto } from './dto/create-project.js';
+import express from 'express';
+type Request = express.Request;
 
 @Controller('projects')
 export class ProjectController {
   constructor(private readonly projectService: ProjectService) {}
+
+  @Post()
+  @UseInterceptors(FileInterceptor('image')) // New
+  async create(
+    @Body() dto: CreateProjectDto,
+    @UploadedFile() image: Express.Multer.File, // New
+    @Req() req: Request
+  ) {
+    const userId = req.user?.id;
+    return this.projectService.create(dto, userId, image);
+  }
 
   @Get()
   async findAll() {

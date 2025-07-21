@@ -1,4 +1,3 @@
-// backend/src/material/material.controller.ts
 import {
   Controller,
   Post,
@@ -12,16 +11,17 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MaterialService } from './material.service.js';
-import { CreateMaterialDto } from '../material/dto/create-material.dto.js'; // Fixed import
-import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
-import { Prisma } from '@prisma/client';
+import { MaterialService } from './material.service';
+import { CreateMaterialDto } from './dto/create-material.dto';
+import { CreateMaterialHistoryDto } from './dto/create-material-history.dto';
 import express from 'express';
 type Request = express.Request;
 
 @Controller('materials')
 export class MaterialController {
-  constructor(private readonly materialService: MaterialService) {}
+  constructor(private readonly materialService: MaterialService) {
+    console.log('[MaterialController] MaterialService injected:', this.materialService ? 'yes' : 'no'); // Log to check injection
+  }
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
@@ -37,6 +37,16 @@ export class MaterialController {
   @Get()
   findAll() {
     return this.materialService.findAllWithCategoryAndNotes();
+  }
+
+  // Moved up: Specific route before dynamic :id
+  @Get('categories') // New endpoint
+  getCategories(@Req() req: Request) {
+    const teamId = req.user?.teamId;
+    console.log('[MaterialController] Fetching categories for teamId:', teamId); // Log teamId
+    const categories = this.materialService.getCategories(teamId);
+    console.log('[MaterialController] Returning categories:', categories); // Log return value
+    return categories;
   }
 
   @Get(':id')
@@ -58,10 +68,10 @@ export class MaterialController {
   createHistoryEntry(
     @Param('id') materialId: string,
     @Body() dto: CreateMaterialHistoryDto,
-    @Req() req: Request,
+    @Req() req: Request
   ) {
     console.log('[MaterialController] Received DTO:', dto);
-    console.log('[MaterialController] req.user:', req.user);
+    console.log('[MaterialController] req.user:', req.user); // ✅ Add this
 
     const userId = req.user?.id;
     if (!userId) throw new Error('Unauthorized');
@@ -80,7 +90,7 @@ export class MaterialController {
     const userId = req.user?.id;
     if (!userId) {
       console.warn('[addNote Controller] Missing userId from req.user');
-      throw new Error('Unauthorized');
+      throw new Error('Unauthorized'); // Temporary log
     }
     return this.materialService.addNote(id, body.content, userId);
   }

@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start:dev": "nodemon --watch src -e ts --exec \"node --loader @swc-node/register/esm src/main.ts\"",
+    "start:dev": "nodemon --watch src -e ts --exec \"node --no-warnings --loader @swc-node/register/esm src/main.ts\"",
     "start:debug": "node --inspect --loader @swc-node/register/esm src/main.ts",
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -31,7 +31,6 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
-    "@nestjs/serve-static": "^5.0.3",
     "@prisma/client": "^6.11.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -39,7 +38,6 @@
     "express": "^5.1.0",
     "jose": "^6.0.11",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.0.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

@@ -1,9 +1,9 @@
 // backend/src/material/material.service.ts
-import { PrismaService } from '../prisma/prisma.service.js';
+import { PrismaService } from '../prisma/prisma.service';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { CreateMaterialDto } from './dto/create-material.dto.js';
-import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
+import { CreateMaterialDto } from './dto/create-material.dto';
+import { CreateMaterialHistoryDto } from './dto/create-material-history.dto';
 
 @Injectable()
 export class MaterialService {
@@ -12,15 +12,55 @@ export class MaterialService {
   async create(dto: CreateMaterialDto, userId?: string, image?: Express.Multer.File) {
     let categoryId: string | undefined;
     if (dto.category) {
+      const teamMember = userId ? await this.prisma.teamMember.findFirst({ where: { userId } }) : undefined;
       const category = await this.prisma.materialCategory.upsert({
-        where: { name: dto.category },
+        where: { name_teamId: { name: dto.category, teamId: teamMember?.teamId || '' } },
         update: {},
-        create: { name: dto.category, teamId: userId ? (await this.prisma.teamMember.findFirst({ where: { userId } }))?.teamId || '' : '' },
+        create: { name: dto.category, teamId: teamMember?.teamId || '' },
       });
       categoryId = category.id;
     }
 
     const teamMember = userId ? await this.prisma.teamMember.findFirst({ where: { userId } }) : undefined;
+    const teamId = teamMember?.teamId || '';  // Ensure teamId is always set
+
+    // Temporary hardcoded approximations for impact fields (based on fiber; expand as needed)
+    let climateChange = 0.0;
+    let ozoneDepletion = 0.0;
+    let humanToxicityCancer = 0.0;
+    let humanToxicityNonCancer = 0.0;
+    let particulateMatter = 0.0;
+    let ionisingRadiation = 0.0;
+    let photochemicalOzoneFormation = 0.0;
+    let acidification = 0.0;
+    let terrestrialEutrophication = 0.0;
+    let freshwaterEutrophication = 0.0;
+    let marineEutrophication = 0.0;
+    let freshwaterEcotoxicity = 0.0;
+    let landUse = 0.0;
+    let waterScarcity = 0.0;
+    let mineralResourceDepletion = 0.0;
+    let fossilResourceDepletion = 0.0;
+    let eScore = 0.0;
+
+    // Simple fiber-based approximation (e.g., cotton has high water use; synthetic high fossil)
+    switch (dto.fiber.toLowerCase()) {
+      case 'cotton':
+        climateChange = 5.5; // kg CO2-eq per kg
+        waterScarcity = 2000; // m3-eq per kg
+        eScore = 45; // Average score
+        break;
+      case 'polyester':
+        fossilResourceDepletion = 50; // MJ per kg
+        climateChange = 3.2;
+        eScore = 60;
+        break;
+      // Add more cases (e.g., wool, silk) or integrate real calc later
+      default:
+        // Defaults already 0
+        break;
+    }
+
     const data: Prisma.MaterialCreateInput = {
       name: dto.name,
       fiber: dto.fiber,
@@ -35,10 +75,28 @@ export class MaterialService {
       purchaseLocation: dto.purchaseLocation,
       datePurchased: dto.datePurchased ? new Date(dto.datePurchased) : undefined,
       pricePerMeter: dto.pricePerMeter,
-      certifications: dto.knownCertifications,
+      certifications: dto.certifications,  // Renamed
       category: categoryId ? { connect: { id: categoryId } } : undefined,
-      teamId: teamMember?.teamId || '',
-      imageUrl: image ? `/Uploads/${image.filename}` : '/fabric.jpg', // Use placeholder
+      team: { connect: { id: teamId } },
+      imageUrl: image ? `/Uploads/${image.filename}` : '/fabric.jpg',
+      // Add calculated impacts
+      climateChange,
+      ozoneDepletion,
+      humanToxicityCancer,
+      humanToxicityNonCancer,
+      particulateMatter,
+      ionisingRadiation,
+      photochemicalOzoneFormation,
+      acidification,
+      terrestrialEutrophication,
+      freshwaterEutrophication,
+      marineEutrophication,
+      freshwaterEcotoxicity,
+      landUse,
+      waterScarcity,
+      mineralResourceDepletion,
+      fossilResourceDepletion,
+      eScore,
     };
 
     const material = await this.prisma.material.create({ data });
@@ -181,5 +239,22 @@ export class MaterialService {
     return this.prisma.materialNote.delete({
       where: { id: noteId },
     });
+  }
+
+  async getCategories(teamId?: string) {
+    console.log('[MaterialService] getCategories called');
+    const where = teamId ? { teamId } : {};
+    console.log('[MaterialService] Query where:', where);
+    try {
+      const categories = await this.prisma.materialCategory.findMany({
+        where,
+        select: { id: true, name: true },
+      });
+      console.log('[MaterialService] Fetched categories:', categories);
+      return categories || [];
+    } catch (err) {
+      console.error('[MaterialService] Error fetching categories:', err);
+      throw new Error('Failed to fetch categories: ' + err.message);
+    }
   }
 }

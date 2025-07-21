@@ -1,64 +1,75 @@
-import { IsString, IsNumber, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsNumber, IsDate, IsOptional, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateMaterialDto {
   @IsString()
+  @IsNotEmpty()
   category: string;
 
   @IsString()
+  @IsNotEmpty()
   name: string;
 
   @IsString()
+  @IsNotEmpty()
   fiber: string;
 
-  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   length?: number;
 
-  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   width?: number;
 
-  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   gsm?: number;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   color?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   texture?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   origin?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   supplier?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   productCode?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   purchaseLocation?: string;
 
-  @IsDateString()
   @IsOptional()
-  datePurchased?: string;
+  @Type(() => Date)
+  @IsDate()
+  datePurchased?: Date;
 
-  @IsNumber()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   pricePerMeter?: number;
 
-  @IsString()
   @IsOptional()
-  knownCertifications?: string;
+  @IsString()
+  certifications?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
   initialNotes?: string;
+
+  // Image is handled separately (not in DTO, as UploadedFile)
 }

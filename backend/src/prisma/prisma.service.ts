@@ -4,7 +4,13 @@ import { PrismaClient } from '@prisma/client';
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
-    await this.$connect();
+    console.log('[PrismaService] Connecting to DB with URL:', process.env.DATABASE_URL); // Log URL for debug
+    try {
+      await this.$connect();
+      console.log('[PrismaService] DB connected successfully');
+    } catch (err) {
+      console.error('[PrismaService] DB connection error:', err);
+    }
   }
 
   async enableShutdownHooks(app: INestApplication) {

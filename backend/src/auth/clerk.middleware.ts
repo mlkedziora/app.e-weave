@@ -9,27 +9,28 @@ export const clerkMiddleware = async (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization
-  console.log('[Clerk Middleware] Authorization Header:', authHeader)
+  console.log('[Clerk Middleware] Request Path:', req.path); // New: Log path to identify /materials/categories
+  console.log('[Clerk Middleware] Authorization Header:', authHeader ? authHeader.substring(0, 20) + '...' : 'undefined');
 
   if (!authHeader?.startsWith('Bearer ')) {
-    console.warn('[Clerk Middleware] Missing or malformed token')
-    return res.status(401).json({ message: 'Missing or invalid token' })
+    console.warn('[Clerk Middleware] Missing or malformed token');
+    return res.status(401).json({ message: 'Missing or invalid token' });
   }
 
-  const token = authHeader.split(' ')[1]
-  console.log('[Clerk Middleware] Token:', token.substring(0, 20) + '...') // Partial log for security
-  console.log('[Clerk Middleware] Env Issuer:', process.env.CLERK_JWT_ISSUER)
-  console.log('[Clerk Middleware] Env JWKS URL:', process.env.CLERK_JWT_JWKS)
+  const token = authHeader.split(' ')[1];
+  console.log('[Clerk Middleware] Token:', token.substring(0, 20) + '...');
+  console.log('[Clerk Middleware] Env Issuer:', process.env.CLERK_JWT_ISSUER);
+  console.log('[Clerk Middleware] Env JWKS URL:', process.env.CLERK_JWT_JWKS);
 
   try {
-    const header = decodeProtectedHeader(token)
-    const issuer = (globalThis as any).process?.env?.CLERK_JWT_ISSUER!
+    const header = decodeProtectedHeader(token);
+    const issuer = (globalThis as any).process?.env?.CLERK_JWT_ISSUER!;
 
     let verified;  // ✅ Use temp var to avoid destructuring TDZ bug in SWC
 
     if (header.alg === 'HS256') {
       console.log('[Clerk Middleware] Using HS256 verification');
-      const secret = new TextEncoder().encode((globalThis as any).process?.env?.CLERK_SIGNING_KEY!)
+      const secret = new TextEncoder().encode((globalThis as any).process?.env?.CLERK_SIGNING_KEY!);
       verified = await jwtVerify(token, secret, { issuer });
     } else {
       console.log('[Clerk Middleware] Using RS256 verification');
@@ -50,7 +51,7 @@ export const clerkMiddleware = async (
     console.log('[Clerk Middleware] Decoded User:', user)
     return next()
   } catch (err) {
-    console.error('[Clerk Middleware] JWT validation failed:', err)
-    return res.status(401).json({ message: 'Unauthorized' })
+    console.error('[Clerk Middleware] JWT validation failed:', err.message);
+    return res.status(401).json({ message: 'Unauthorized', error: err.message });
   }
 }

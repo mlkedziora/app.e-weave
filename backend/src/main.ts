@@ -21,11 +21,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   console.log('All process.env:', process.env); // Should show DATABASE_URL, CLERK_JWT_ISSUER, etc.
-  
 
   console.log('✅ Step 6: Created Nest app');
 
-  app.enableCors();
+  app.enableCors({
+  origin: true,
+  methods: 'GET,POST,PATCH,DELETE',
+  allowedHeaders: 'Authorization, Content-Type',
+  });
   console.log('✅ Step 7: Enabled CORS');
 
   // ✅ Apply middleware globally (ensures all routes are authenticated unless public)

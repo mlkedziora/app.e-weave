@@ -24,16 +24,19 @@ export default function ProjectForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getToken().then(async (t) => {
+    getToken({ template: 'backend-access' }).then(async (t) => { // Use correct token template
       setToken(t);
       try {
         const [membersRes, materialsRes] = await Promise.all([
-          fetch('http://localhost:3000/members', { headers: { Authorization: `Bearer ${t}` } }),
-          fetch('http://localhost:3000/materials', { headers: { Authorization: `Bearer ${t}` } }),
+          fetch('/api/members', { headers: { Authorization: `Bearer ${t}` } }), // Added /api
+          fetch('/api/materials', { headers: { Authorization: `Bearer ${t}` } }), // Added /api
         ]);
+        if (!membersRes.ok) throw new Error('Failed to fetch members');
+        if (!materialsRes.ok) throw new Error('Failed to fetch materials');
         setMembers(await membersRes.json());
         setMaterials(await materialsRes.json());
       } catch (err) {
+        console.error('Error loading members or materials:', err);
         setError('Failed to load members or materials');
       }
     });
@@ -97,7 +100,7 @@ export default function ProjectForm() {
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch('http://localhost:3000/projects', {
+      const res = await fetch('/api/projects', { // Added /api
         method: 'POST',
         body: formData,
         headers: { Authorization: `Bearer ${token}` },
@@ -107,7 +110,8 @@ export default function ProjectForm() {
         resetForm();
         setError(null);
       } else {
-        setError('Failed to create project');
+        const text = await res.text();
+        setError(`Failed to create project: ${text}`);
       }
     } catch (err) {
       console.error(err);

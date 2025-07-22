@@ -1,8 +1,12 @@
-import { IsString, IsDateString, IsOptional, IsArray } from 'class-validator';
+// backend/src/member/dto/create-team-member.dto.ts
+import { IsString, IsDateString, IsOptional, IsArray, IsEmail } from 'class-validator';
 
 export class CreateTeamMemberDto {
   @IsString()
   name: string;
+
+  @IsEmail()
+  email: string;
 
   @IsString()
   position: string;

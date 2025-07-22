@@ -2,9 +2,9 @@
   "compilerOptions": {
     // Existing config...
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "ES2020",
+    "target": "ES2018",  // Changed from ES2020 (if needed; test first)
     "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],  // Keep lib as-is or update to ["ES2018", "DOM", "DOM.Iterable"]
     "module": "ESNext",
     "skipLibCheck": true,
 
@@ -32,4 +32,3 @@
   },
   "include": ["./src"]
 }
-

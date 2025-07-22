@@ -18,18 +18,18 @@ export default function ProjectsOverview({
 }) {
   const [projects, setProjects] = useState<Project[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true) // Added loading state for consistency
+  const [loading, setLoading] = useState(true)
   const { getToken, isLoaded, isSignedIn } = useAuth()
 
-  // Mirror Inventory: Extract fetch to reusable function
   const fetchProjects = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const token = await getToken({ template: 'backend-access' })
       if (!token) {
-        setError('Authentication token unavailable. Please refresh or sign in again.')
-        return
+        throw new Error('Authentication token unavailable. Please refresh or sign in again.')
       }
-      const res = await fetch('/projects', {
+      const res = await fetch('/api/projects', {  // Added /api
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -56,29 +56,26 @@ export default function ProjectsOverview({
   }, [isLoaded, isSignedIn])
 
   if (!isLoaded || loading) {
-    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">Loading projects...</div> // Updated text color to black
+    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">Loading projects...</div>
   }
 
   if (error) {
-    return <div className="p-4 text-red-500">{error}</div>
+    return (
+      <div className="p-4 text-red-500 flex flex-col items-center">
+        {error}
+        <button onClick={fetchProjects} className="mt-2 text-blue-500 underline">Retry</button>
+      </div>
+    )
   }
 
   if (projects.length === 0) {
-    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">No projects found.</div> // Added empty state
+    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">No projects found.</div>
   }
 
   return (
     <div className="h-full bg-white p-4 rounded-lg shadow overflow-y-auto [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-padding:0.155rem] [--progress-fill-color:#D7FAEA]">
-      {/* CSS Variables Defined Here:
-         --progress-bar-height: Sets outer (grey) bar height (0.4rem/6.4px, matches your tweak)
-         --progress-fill-height: Sets inner (colored) bar height (0.2rem/3.2px, half of outer)
-         --progress-bar-width: Sets bar width (100% to span card; options: 80%, 50%, 400px, etc.)
-         --progress-bg-color: Sets outer bar background color (#d4d4d4, matches your tweak; options: #F0F0F0, #CCCCCC, #D3D3D3)
-         --progress-padding: Sets horizontal padding for inner fill (0.155rem/2.48px, matches your tweak; options: 0.125rem/2px, 0.25rem/4px, 0 for none)
-         --progress-fill-color: Sets inner bar color (#D7FAEA, matches TeamList; options: #40E0D0/turquoise, etc.)
-      */}
       <h2 className="text-xl font-semibold mb-4 text-black">Projects</h2>
-      <div className="space-y-4 pr-2"> {/* Kept original scroll container */}
+      <div className="space-y-4 pr-2">
         {projects.map((project) => {
           const taskCount = project.taskCount ?? 0
           const progress = project.progress ?? 0
@@ -88,13 +85,13 @@ export default function ProjectsOverview({
             <div
               key={project.id}
               onClick={() => onSelect(project.id)}
-              className={`cursor-pointer hover:bg-gray-50 ${isSelected ? '' : ''}`} // Removed bg-blue-100 to eliminate blue overlay on selection
+              className={`cursor-pointer hover:bg-gray-50 ${isSelected ? '' : ''}`}
             >
               <div className="flex items-center space-x-4">
                 <img
-                  src="/project.jpg" // Updated to frontend/public/project.jpg
+                  src="/project.jpg"
                   alt="Project"
-                  className="w-[75px] h-[75px] rounded-full object-cover" // Fixed to 75px, circular
+                  className="w-[75px] h-[75px] rounded-full object-cover"
                 />
                 <div>
                   <h3 className="font-semibold text-lg">{project.name}</h3>
@@ -102,19 +99,19 @@ export default function ProjectsOverview({
                   <p className="text-sm text-gray-500">Progress: {progress}%</p>
                 </div>
               </div>
-              <div className="mt-2" style={{ width: 'var(--progress-bar-width)' }}> {/* Uses --progress-bar-width */}
+              <div className="mt-2" style={{ width: 'var(--progress-bar-width)' }}>
                 <div 
                   className="overflow-hidden bg-[var(--progress-bg-color)] rounded" 
                   style={{ height: 'var(--progress-bar-height)' }} 
-                > {/* Uses --progress-bg-color and --progress-bar-height */}
+                >
                   <div
-                    className="rounded" // Rounded corners for inner fill
+                    className="rounded"
                     style={{ 
-                      backgroundColor: 'var(--progress-fill-color)', // Fixed fill color matching TeamList (#D7FAEA)
-                      width: `max(0px, calc(${progress}% - 2 * var(--progress-padding)))`, // Adjusted for padding
-                      height: 'var(--progress-fill-height)', // Uses --progress-fill-height
-                      marginLeft: 'var(--progress-padding)', // Left padding
-                      marginTop: 'calc((var(--progress-bar-height) - var(--progress-fill-height)) / 2)' // Vertical centering
+                      backgroundColor: 'var(--progress-fill-color)',
+                      width: `max(0px, calc(${progress}% - 2 * var(--progress-padding)))`,
+                      height: 'var(--progress-fill-height)',
+                      marginLeft: 'var(--progress-padding)',
+                      marginTop: 'calc((var(--progress-bar-height) - var(--progress-fill-height)) / 2)'
                     }} 
                   ></div>
                 </div>

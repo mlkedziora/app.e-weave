@@ -1,6 +1,7 @@
 // backend/src/member/member.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { createClerkClient } from '@clerk/backend';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto.js';
 import { Prisma } from '@prisma/client';
 
@@ -15,19 +16,26 @@ type TeamMemberWithDetails = Prisma.TeamMemberGetPayload<{
 
 @Injectable()
 export class MemberService {
+  private clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+
   constructor(private readonly prisma: PrismaService) {}
 
   async create(dto: CreateTeamMemberDto, userId: string, image?: Express.Multer.File) { 
     if (!userId) throw new Error('User ID required for team member creation');
 
+    const adminTeamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    const teamId = adminTeamMember.teamId;  // Get from admin user
+
+    // Create DB entry first (pending userId)
     const data: Prisma.TeamMemberCreateInput = {
       name: dto.name,
       position: dto.position,
       startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      userId, // Link to Clerk user
+      userId: null,  // Pending Clerk userId
+      teamId,
       imageUrl: image ? `/uploads/${image.filename}` : null, // New
-      // role, teamId: assume from req or default
+      role: 'member',  // Default
     };
 
     const member = await this.prisma.teamMember.create({ data });
@@ -39,7 +47,33 @@ export class MemberService {
       });
     }
 
+    // Send Clerk organization invitation (teamId as orgId)
+    const invitation = await this.clerk.organizations.createOrganizationInvitation({
+      organizationId: teamId,
+      emailAddress: dto.email,
+      inviterUserId: userId,
+      role: 'org:member',
+      publicMetadata: { role: 'member', teamId },
+      redirectUrl: 'http://localhost:5173/sign-up',  // Adjust for prod
+    });
+
+    console.log(`Invitation sent to ${dto.email}: ${invitation.publicInvitationUrl}`);
+
     return member;
+  }
+
+  // New: Handle Clerk webhook for membership created
+  async handleClerkWebhook(payload: any) {
+    if (payload.type === 'organizationMembership.created') {
+      const { user_id, organization_id } = payload.data;
+      // Update pending member with userId
+      await this.prisma.teamMember.updateMany({
+        where: { teamId: organization_id, userId: null },  // Find pending by teamId
+        data: { userId: user_id },
+      });
+      console.log(`Updated member with userId: ${user_id} for team: ${organization_id}`);
+    }
+    return { success: true };
   }
 
   async findAll() {

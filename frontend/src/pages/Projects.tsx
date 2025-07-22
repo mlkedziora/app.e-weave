@@ -6,7 +6,7 @@ export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
   return (
-    <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden">
+    <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden text-black"> {/* Added text-black for consistency */}
       <div className="col-span-1 h-full">
         <ProjectsOverview onSelect={setSelectedProjectId} selectedId={selectedProjectId} />
       </div>

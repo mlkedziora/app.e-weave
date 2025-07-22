@@ -9,6 +9,7 @@ export default function TeamMemberForm() {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [position, setPosition] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -19,10 +20,10 @@ export default function TeamMemberForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getToken().then(async (t) => {
+    getToken({ template: 'backend-access' }).then(async (t) => { // Use correct token template
       setToken(t);
       try {
-        const res = await fetch('http://localhost:3000/projects', { headers: { Authorization: `Bearer ${t}` } });
+        const res = await fetch('/api/projects', { headers: { Authorization: `Bearer ${t}` } }); // Proxied path
         setProjects(await res.json());
       } catch (err) {
         setError('Failed to load projects');
@@ -40,6 +41,7 @@ export default function TeamMemberForm() {
 
   const resetForm = () => {
     setName('');
+    setEmail('');
     setPosition('');
     setStartDate('');
     setEndDate('');
@@ -57,6 +59,7 @@ export default function TeamMemberForm() {
 
     const formData = new FormData();
     formData.append('name', name);
+    formData.append('email', email);
     formData.append('position', position);
     if (startDate) formData.append('startDate', startDate);
     if (endDate) formData.append('endDate', endDate);
@@ -64,7 +67,7 @@ export default function TeamMemberForm() {
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch('http://localhost:3000/members', {
+      const res = await fetch('/api/members', { // Proxied path
         method: 'POST',
         body: formData,
         headers: { Authorization: `Bearer ${token}` },
@@ -90,6 +93,7 @@ export default function TeamMemberForm() {
         <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:border-black" />
       </div>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
+      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="Position" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="Start Date" type="date" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="End Date" type="date" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />

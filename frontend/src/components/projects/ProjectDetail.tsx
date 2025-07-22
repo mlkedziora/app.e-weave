@@ -63,15 +63,14 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const { getToken, userId: currentUserId, isLoaded, isSignedIn } = useAuth()
 
-  // Mirror Inventory: Extract to reusable function with cache-bust
   const fetchProjectDetails = async () => {
+    setError(null)
     try {
       const token = await getToken({ template: 'backend-access' })
       if (!token) {
-        setError('Authentication token unavailable. Please refresh or sign in again.')
-        return
+        throw new Error('Authentication token unavailable. Please refresh or sign in again.')
       }
-      const res = await fetch(`/projects/${projectId}?t=${Date.now()}`, {
+      const res = await fetch(`/api/projects/${projectId}?t=${Date.now()}`, {  // Added /api and cache-bust
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -92,7 +91,6 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     fetchProjectDetails()
   }, [projectId, isLoaded, isSignedIn])
 
-  // Align with Inventory: Use same fetch function for refresh
   const refreshNotes = async () => {
     try {
       await fetchProjectDetails() // Reuses the detail fetch for full sync
@@ -102,15 +100,20 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   }
 
   if (!isLoaded) {
-    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">Loading...</div>
+    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">Loading...</div>
   }
 
   if (error) {
-    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">{error}</div>
+    return (
+      <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex flex-col items-center justify-center">
+        {error}
+        <button onClick={fetchProjectDetails} className="mt-2 text-blue-500 underline">Retry</button>
+      </div>
+    )
   }
 
   if (!project) {
-    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">Loading project details...</div>
+    return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">Loading project details...</div>
   }
 
   // Sort tasks: incomplete first
@@ -275,7 +278,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                       if (confirm('Delete this note?')) {
                         try {
                           const token = await getToken({ template: 'backend-access' })
-                          const res = await fetch(`/projects/notes/${note.id}`, {
+                          const res = await fetch(`/api/projects/notes/${note.id}`, {  // Added /api
                             method: 'DELETE',
                             headers: { Authorization: `Bearer ${token}` },
                           })
@@ -357,7 +360,7 @@ function EditNoteModal({ note, onClose, onSuccess }: EditNoteModalProps) {
     setLoading(true)
     try {
       const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/projects/notes/${note.id}`, {
+      const res = await fetch(`/api/projects/notes/${note.id}`, {  // Added /api
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -414,7 +417,7 @@ function AddNoteModal({ projectId, onClose, onSuccess }: AddNoteModalProps) {
     setLoading(true)
     try {
       const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/projects/${projectId}/notes`, {
+      const res = await fetch(`/api/projects/${projectId}/notes`, {  // Added /api
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -471,7 +474,7 @@ function AllNotesModal({ notes, onClose, onSuccess }: AllNotesModalProps) {
     if (confirm('Delete this note?')) {
       try {
         const token = await getToken({ template: 'backend-access' })
-        const res = await fetch(`/projects/notes/${noteId}`, {
+        const res = await fetch(`/api/projects/notes/${noteId}`, {  // Added /api
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })

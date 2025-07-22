@@ -15,7 +15,7 @@ export default function Inventory() {
     const fetchMaterials = async () => {
       try {
         const token = await getToken({ template: 'backend-access' })
-        const res = await fetch('/materials', { // ✅ Change to relative URL (assume Vite proxy)
+        const res = await fetch('/api/materials', { // ✅ Added /api
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -42,7 +42,7 @@ export default function Inventory() {
     setLoadingDetail(true)
     try {
       const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/materials/${id}?t=${Date.now()}`, { // ✅ Relative URL + cache-bust param
+      const res = await fetch(`/api/materials/${id}?t=${Date.now()}`, { // ✅ Added /api
         headers: {
           Authorization: `Bearer ${token}`,
         },

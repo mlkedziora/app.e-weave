@@ -6,7 +6,8 @@ import StyledLink from '../common/StyledLink';
 export default function MaterialForm() {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
-  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [name, setName] = useState('');
   const [fiber, setFiber] = useState('');
   const [length, setLength] = useState('');
@@ -20,14 +21,40 @@ export default function MaterialForm() {
   const [purchaseLocation, setPurchaseLocation] = useState('');
   const [datePurchased, setDatePurchased] = useState('');
   const [pricePerMeter, setPricePerMeter] = useState('');
-  const [knownCertifications, setKnownCertifications] = useState('');
+  const [certifications, setCertifications] = useState('');
   const [initialNotes, setInitialNotes] = useState('');
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState('/fabric.jpg');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getToken().then(setToken);
+    getToken({ template: 'backend-access' }).then(async (t) => {
+      setToken(t);
+      console.log('[MaterialForm] Fresh token for manual testing:', t);
+      try {
+        console.log('[MaterialForm] Using token:', t?.substring(0, 20) + '...');
+        const res = await fetch('/api/materials/categories', {  // Changed to /api/materials/categories
+          headers: { Authorization: `Bearer ${t}` },
+        });
+        console.log('[MaterialForm] Fetch status:', res.status, res.statusText);
+        const text = await res.text();
+        console.log('[MaterialForm] Response body:', text || 'Empty response');
+        if (!res.ok) {
+          throw new Error(`HTTP error! Status: ${res.status}, Body: ${text}`);
+        }
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) {
+          throw new Error('Invalid data format: ' + JSON.stringify(data));
+        }
+        setCategories(data);
+      } catch (err) {
+        console.error('[MaterialForm] Error fetching categories:', err);
+        setError('Failed to load categories. Please try again.');
+      }
+    }).catch((err) => {
+      console.error('[MaterialForm] Error getting token:', err);
+      setError('Failed to authenticate. Please try again.');
+    });
   }, [getToken]);
 
   useEffect(() => {
@@ -39,7 +66,7 @@ export default function MaterialForm() {
   }, [image]);
 
   const resetForm = () => {
-    setCategory('');
+    setSelectedCategory('');
     setName('');
     setFiber('');
     setLength('');
@@ -53,7 +80,7 @@ export default function MaterialForm() {
     setPurchaseLocation('');
     setDatePurchased('');
     setPricePerMeter('');
-    setKnownCertifications('');
+    setCertifications('');
     setInitialNotes('');
     setImage(null);
     setPreview('/fabric.jpg');
@@ -67,12 +94,12 @@ export default function MaterialForm() {
     }
 
     const formData = new FormData();
-    formData.append('category', category);
+    formData.append('category', selectedCategory);
     formData.append('name', name);
     formData.append('fiber', fiber);
-    if (length) formData.append('length', length);
-    if (width) formData.append('width', width);
-    if (gsm) formData.append('gsm', gsm);
+    if (length) formData.append('length', parseFloat(length).toString());  // Ensure numeric string
+    if (width) formData.append('width', parseFloat(width).toString());
+    if (gsm) formData.append('gsm', parseFloat(gsm).toString());
     if (color) formData.append('color', color);
     if (texture) formData.append('texture', texture);
     if (origin) formData.append('origin', origin);
@@ -80,13 +107,13 @@ export default function MaterialForm() {
     if (productCode) formData.append('productCode', productCode);
     if (purchaseLocation) formData.append('purchaseLocation', purchaseLocation);
     if (datePurchased) formData.append('datePurchased', datePurchased);
-    if (pricePerMeter) formData.append('pricePerMeter', pricePerMeter);
-    if (knownCertifications) formData.append('knownCertifications', knownCertifications);
+    if (pricePerMeter) formData.append('pricePerMeter', parseFloat(pricePerMeter).toString());
+    if (certifications) formData.append('certifications', certifications);
     if (initialNotes) formData.append('initialNotes', initialNotes);
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch('http://localhost:3000/materials', {
+      const res = await fetch('/api/materials', {  // Changed to /api/materials for consistency
         method: 'POST',
         body: formData,
         headers: { Authorization: `Bearer ${token}` },
@@ -96,7 +123,8 @@ export default function MaterialForm() {
         resetForm();
         setError(null);
       } else {
-        setError('Failed to create material');
+        const text = await res.text();
+        setError(`Failed to create material: ${res.status} - ${text}`);
       }
     } catch (err) {
       console.error(err);
@@ -111,7 +139,16 @@ export default function MaterialForm() {
         <img src={preview} alt="Material Preview" className="w-full h-48 object-cover rounded mb-4" />
         <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:border-black" />
       </div>
-      <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Category" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
+      <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} required className="border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:border-black">
+        <option value="">Select Category</option>
+        {categories.length === 0 ? (
+          <option disabled>No categories available</option>
+        ) : (
+          categories.map((cat) => (
+            <option key={cat.id} value={cat.name}>{cat.name}</option>
+          ))
+        )}
+      </select>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name/Type" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={fiber} onChange={(e) => setFiber(e.target.value)} placeholder="Fiber" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={length} onChange={(e) => setLength(e.target.value)} placeholder="Length (m)" type="number" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
@@ -125,7 +162,7 @@ export default function MaterialForm() {
       <input value={purchaseLocation} onChange={(e) => setPurchaseLocation(e.target.value)} placeholder="Purchase Location" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={datePurchased} onChange={(e) => setDatePurchased(e.target.value)} placeholder="Date Purchased" type="date" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={pricePerMeter} onChange={(e) => setPricePerMeter(e.target.value)} placeholder="Price per Meter" type="number" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
-      <input value={knownCertifications} onChange={(e) => setKnownCertifications(e.target.value)} placeholder="Known Certifications" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
+      <input value={certifications} onChange={(e) => setCertifications(e.target.value)} placeholder="Known Certifications" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <textarea value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="Initial Notes" rows={3} className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black md:col-span-2" />
       <button type="submit" className="col-span-full text-black hover:underline block text-center">
         Save Material

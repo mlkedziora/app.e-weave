@@ -6,7 +6,7 @@ console.log('✅ Step 1: Imported NestFactory');
 import { AppModule } from './app.module.js';
 console.log('✅ Step 2: Imported AppModule');
 
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, HttpServer } from '@nestjs/common'; // Updated: Added HttpServer for shutdown hooks
 console.log('✅ Step 3: Imported ValidationPipe');
 
 import dotenv from 'dotenv';
@@ -20,14 +20,21 @@ async function bootstrap() {
   console.log('🚀 Step 5: Entering bootstrap');
   const app = await NestFactory.create(AppModule);
 
-  console.log('All process.env:', process.env); // Should show DATABASE_URL, CLERK_JWT_ISSUER, etc.
+  // Masked env logging (dev-only)
+  if (process.env.NODE_ENV === 'development') {
+    const safeEnv = { ...process.env };
+    delete safeEnv.CLERK_SECRET_KEY; // Mask Clerk secret
+    delete safeEnv.DATABASE_URL; // Mask DB URL (contains password)
+    // Add more deletions if you have other secrets, e.g., delete safeEnv.OTHER_SECRET;
+    console.log('Safe process.env (masked):', safeEnv);
+  }
 
   console.log('✅ Step 6: Created Nest app');
 
   app.enableCors({
-  origin: true,
-  methods: 'GET,POST,PATCH,DELETE',
-  allowedHeaders: 'Authorization, Content-Type',
+    origin: true, // For dev; tighten in prod, e.g., origin: 'http://localhost:5173'
+    methods: 'GET,POST,PATCH,DELETE',
+    allowedHeaders: 'Authorization, Content-Type',
   });
   console.log('✅ Step 7: Enabled CORS');
 
@@ -43,6 +50,9 @@ async function bootstrap() {
     }),
   );
   console.log('✅ Step 8: Applied global validation');
+
+  // Add graceful shutdown hooks
+  app.enableShutdownHooks(app.get(HttpServer)); // For clean app close on signals
 
   await app.listen(3000);
   console.log('🚀 Step 9: Backend is running on http://localhost:3000');

@@ -3,7 +3,7 @@ import { Controller, Get, Post, Body, Param, Req, UseInterceptors, UploadedFile 
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MemberService } from './member.service.js';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto.js';
-import { Roles } from '../auth/roles.decorator.js'; // Add this import
+import { Roles } from '../auth/roles.decorator.js'; // Add this
 import express from 'express';
 type Request = express.Request;
 
@@ -11,7 +11,7 @@ type Request = express.Request;
 export class MemberController {
   constructor(private readonly memberService: MemberService) {}
 
-  @Roles('admin') // Restrict to admin
+  @Roles('admin') // Add this
   @Post()
   @UseInterceptors(FileInterceptor('image'))
   async create(
@@ -23,13 +23,11 @@ export class MemberController {
     return this.memberService.create(dto, userId, image);
   }
 
-  @Roles('admin') // Restrict to admin
   @Get()
   findAll() {
     return this.memberService.findAll();
   }
 
-  @Roles('admin') // Restrict to admin
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.memberService.findOne(id);

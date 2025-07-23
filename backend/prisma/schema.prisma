@@ -16,11 +16,13 @@ model Team {
   materials  Material[]
   categories MaterialCategory[]
   createdAt  DateTime           @default(now())
+  clerkOrgId String?            // New: Clerk's organization ID for sync
 }
 
 model TeamMember {
   id                 String              @id @default(cuid())
-  userId             String              @unique
+  userId             String?             @unique  // Updated: Nullable, still unique for non-null values
+  email              String?             // New: For pending invite matching (cleared after signup)
   name               String
   role               String
   position           String?

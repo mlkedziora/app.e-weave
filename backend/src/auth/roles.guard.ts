@@ -1,9 +1,19 @@
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
+// backend/src/auth/roles.guard.ts
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  Scope,
+  Inject,
+  ForbiddenException,  // Add for throwing 403
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-@Injectable()
+@Injectable({ scope: Scope.DEFAULT }) // ✅ force default scope
 export class RolesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {
+  constructor(
+    @Inject(Reflector) private readonly reflector: Reflector, // ✅ explicit injection
+  ) {
     console.log('✅ RolesGuard initialized:', this.reflector);
   }
 
@@ -15,7 +25,7 @@ export class RolesGuard implements CanActivate {
     const user = request.user;
 
     if (!user?.role || !roles.includes(user.role)) {
-      throw new ForbiddenException('Insufficient role permissions');
+      throw new ForbiddenException('Insufficient role permissions'); // Throw 403
     }
 
     return true;

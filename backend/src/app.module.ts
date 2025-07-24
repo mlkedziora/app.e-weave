@@ -13,6 +13,7 @@ import { RolesGuard } from './auth/roles.guard.js';
 import { PrismaService } from './prisma/prisma.service.js';
 import { ServeStaticModule } from '@nestjs/serve-static'; // New
 import { join } from 'path'; // New
+import { TaskModule } from './task/task.module.js';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { join } from 'path'; // New
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'), // Fixed: Use process.cwd() instead of __dirname
       serveRoot: '/uploads',
-    }), // New: Serve uploads folder
+    }),
+    TaskModule, // New: Serve uploads folder
   ],
   controllers: [AppController],
   providers: [

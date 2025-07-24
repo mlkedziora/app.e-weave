@@ -1,3 +1,4 @@
+# backend/docker-compose.yml
 
 services:
   db:
@@ -11,6 +12,19 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
+  app:  # New: Backend app service
+    build: .  # Builds from your Dockerfile
+    container_name: eweave-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # Expose backend port
+    env_file: .env  # Loads env vars at runtime (secure)
+    depends_on:
+      - db  # Waits for DB to start
+    volumes:
+      - .:/app  # For dev hot-reload (remove in prod)
+      - /app/node_modules  # Persist node_modules
 
 volumes:
   postgres_data:

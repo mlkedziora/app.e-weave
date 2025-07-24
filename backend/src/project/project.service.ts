@@ -2,12 +2,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateProjectDto } from './dto/create-project.js';
+import { Express } from 'express'; // For Multer typing
 
 @Injectable()
 export class ProjectService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateProjectDto, userId: string, image?: Express.Multer.File) {
+  async create(dto: CreateProjectDto, userId: string, image?: Express.Multer.File) { // Fixed optional
     if (!userId) throw new Error('User ID required');
 
     const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
@@ -17,7 +18,7 @@ export class ProjectService {
       const project = await tx.project.create({
         data: {
           name: dto.name,
-          imageUrl: image ? `/Uploads/${image.filename}` : '/project.jpg', // Use placeholder
+          imageUrl: image ? `/uploads/${image.filename}` : '/project.jpg',
           startDate: dto.startDate ? new Date(dto.startDate) : undefined,
           deadline: dto.deadline ? new Date(dto.deadline) : undefined,
           teamId: teamMember.teamId,
@@ -111,14 +112,34 @@ export class ProjectService {
         tasks: {
           include: {
             assignees: {
-              include: { teamMember: { select: { name: true } } },
+              include: { teamMember: { select: { id: true, name: true } } },  // Include id and name for frontend use
             },
           },
         },
-        assignedMaterials: { include: { material: true } },
+        assignedMaterials: { 
+          include: { 
+            material: { 
+              include: { 
+                category: true 
+              } 
+            } 
+          } 
+        },
         notes: {
           include: { teamMember: { select: { id: true, name: true, userId: true } } },
           orderBy: { createdAt: 'desc' },
+        },
+        assignees: { 
+          include: { 
+            teamMember: { 
+              select: { 
+                id: true, 
+                name: true, 
+                role: true,  // Add role
+                imageUrl: true  // Add imageUrl for real profiles
+              } 
+            } 
+          } 
         },
       },
     });
@@ -141,6 +162,28 @@ export class ProjectService {
     return this.prisma.projectNote.delete({
       where: { id: noteId },
     });
+  }
+
+  async addAssignees(projectId: string, teamMemberIds: string[]) {
+    if (!teamMemberIds?.length) return { message: 'No team members to add' };
+
+    await this.prisma.projectAssignee.createMany({
+      data: teamMemberIds.map((teamMemberId) => ({ projectId, teamMemberId })),
+      skipDuplicates: true,
+    });
+
+    return { success: true };
+  }
+
+  async addMaterials(projectId: string, materialIds: string[]) {
+    if (!materialIds?.length) return { message: 'No materials to add' };
+
+    await this.prisma.projectMaterial.createMany({
+      data: materialIds.map((materialId) => ({ projectId, materialId })),
+      skipDuplicates: true,
+    });
+
+    return { success: true };
   }
 }
 

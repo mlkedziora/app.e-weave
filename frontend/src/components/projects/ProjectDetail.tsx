@@ -1,11 +1,13 @@
 // frontend/src/components/projects/ProjectDetail.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import ItemCard from '../common/ItemCard'
 import ScrollableContainer from '../common/ScrollableContainer'
+import MemberItem from '../common/MemberItem'
+import MaterialItem from '../common/MaterialItem'
 
 interface TaskAssignee {
   teamMember: {
+    id: string
     name: string
   }
 }
@@ -23,6 +25,7 @@ interface Material {
   category: string
   length: number
   eScore: number
+  imageUrl?: string
 }
 
 interface Note {
@@ -46,7 +49,10 @@ interface ProjectDetailData {
   tasks: Task[]
   materials: Material[]
   notes?: Note[]
+  assignees?: { id: string; name: string; role?: string; imageUrl?: string }[]  // Flattened, optional for null-safety
 }
+
+interface Member { id: string; name: string; }
 
 const allCategories = ['Fabrics', 'Trims', 'Fusings']
 
@@ -62,38 +68,73 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
   const { getToken, userId: currentUserId, isLoaded, isSignedIn } = useAuth()
+  const [members, setMembers] = useState<Member[]>([])
+  const [allMaterials, setAllMaterials] = useState<Material[]>([])
+  const [showAddTaskForm, setShowAddTaskForm] = useState(false)
+  const [showAddMemberForm, setShowAddMemberForm] = useState(false)
+  const [showAddMaterialForm, setShowAddMaterialForm] = useState(false)
+  const [newTaskName, setNewTaskName] = useState('')
+  const [newStartDate, setNewStartDate] = useState('')
+  const [newDeadline, setNewDeadline] = useState('')
+  const [newAssigneeId, setNewAssigneeId] = useState('')
+  const [newSubtasks, setNewSubtasks] = useState<string[]>([])
+  const [newMemberIds, setNewMemberIds] = useState<string[]>([])
+  const [activeAddCategory, setActiveAddCategory] = useState('Fabrics')
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([])
+  const [materialSearch, setMaterialSearch] = useState('')
 
   const fetchProjectDetails = async () => {
-    setError(null)
+    setError(null);
     try {
-      const token = await getToken({ template: 'backend-access' })
+      const token = await getToken({ template: 'backend-access' });
       if (!token) {
-        throw new Error('Authentication token unavailable. Please refresh or sign in again.')
+        throw new Error('Authentication token unavailable. Please refresh or sign in again.');
       }
-      const res = await fetch(`/api/projects/${projectId}?t=${Date.now()}`, {  // Added /api and cache-bust
+      const res = await fetch(`/api/projects/${projectId}?t=${Date.now()}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
+      });
       if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`)
+        throw new Error(`HTTP error! Status: ${res.status}`);
       }
-      const data = await res.json()
-      setProject(data)
+      const data = await res.json();
+      setProject({
+        ...data,
+        tasks: (data.tasks || []).map(t => ({ ...t, assignees: t.assignees || [] })),
+      });
     } catch (err) {
-      console.error('Failed to load project:', err)
-      setError('Failed to load project details. Please try again.')
+      console.error('Failed to load project:', err);
+      setError('Failed to load project details. Please try again.');
     }
-  }
+  };
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) return
     fetchProjectDetails()
   }, [projectId, isLoaded, isSignedIn])
 
+  useEffect(() => {
+    const fetchResources = async () => {
+      try {
+        const token = await getToken({ template: 'backend-access' })
+        const [membersRes, materialsRes] = await Promise.all([
+          fetch('/api/members', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('/api/materials', { headers: { Authorization: `Bearer ${token}` } }),
+        ])
+        if (!membersRes.ok || !materialsRes.ok) throw new Error('Failed to fetch resources')
+        setMembers(await membersRes.json())
+        setAllMaterials(await materialsRes.json())
+      } catch (err) {
+        console.error('Error loading members or materials:', err)
+      }
+    }
+    if (isLoaded && isSignedIn) fetchResources()
+  }, [isLoaded, isSignedIn, getToken])
+
   const refreshNotes = async () => {
     try {
-      await fetchProjectDetails() // Reuses the detail fetch for full sync
+      await fetchProjectDetails() 
     } catch (err) {
       console.error('Failed to refresh notes:', err)
     }
@@ -116,7 +157,6 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     return <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">Loading project details...</div>
   }
 
-  // Sort tasks: incomplete first
   const sortedTasks = [...project.tasks].sort((a, b) => {
     if (a.progress === 100 && b.progress < 100) return 1
     if (a.progress < 100 && b.progress === 100) return -1
@@ -124,20 +164,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   })
   const visibleTasks = showAllTasks ? sortedTasks : sortedTasks.slice(0, 10)
 
-  // Unique assigned members with current incomplete task
-  const assignedMembersMap = new Map<string, { name: string; task: string; completion: number }>()
-  project.tasks.forEach((task) => {
-    if (task.progress < 100) {
-      task.assignees.forEach((a) => {
-        const name = a.teamMember.name
-        if (!assignedMembersMap.has(name)) {
-          assignedMembersMap.set(name, { name, task: task.name, completion: task.progress })
-        }
-      })
-    }
-  })
-  const uniqueAssignedMembers = Array.from(assignedMembersMap.values())
-  const visibleMembers = showAllMembers ? uniqueAssignedMembers : uniqueAssignedMembers.slice(0, 4)
+  const visibleMembers = showAllMembers ? (project.assignees || []) : (project.assignees || []).slice(0, 4);
 
   const filteredMaterials = project.materials.filter((m) => m.category === activeCategory)
   const visibleMaterials = showAllMaterials ? filteredMaterials : filteredMaterials.slice(0, 5)
@@ -152,6 +179,109 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     if (!project.tasks.length) return 0
     const total = project.tasks.reduce((sum, t) => sum + t.progress, 0)
     return Math.round(total / project.tasks.length)
+  }
+
+  const addNewSubtask = () => setNewSubtasks([...newSubtasks, ''])
+
+  const updateNewSubtask = (index: number, value: string) => {
+    const updated = [...newSubtasks]
+    updated[index] = value
+    setNewSubtasks(updated)
+  }
+
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newTaskName.trim()) return
+    try {
+      const token = await getToken({ template: 'backend-access' })
+      const body = {
+        projectId: project.id,
+        name: newTaskName,
+        startedAt: newStartDate || new Date().toISOString().split('T')[0],
+        deadline: newDeadline || undefined,
+        assigneeId: newAssigneeId || undefined,
+        subtasks: newSubtasks.filter((s) => s.trim())
+      }
+      const res = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        fetchProjectDetails()
+        setNewTaskName('')
+        setNewStartDate('')
+        setNewDeadline('')
+        setNewAssigneeId('')
+        setNewSubtasks([])
+        setShowAddTaskForm(false)
+      } else {
+        alert('Failed to add task')
+      }
+    } catch (err) {
+      console.error('Error adding task:', err)
+      alert('Error adding task')
+    }
+  }
+
+  const handleAddMembers = async () => {
+    if (!newMemberIds.length) return
+    try {
+      const token = await getToken({ template: 'backend-access' })
+      const res = await fetch(`/api/projects/${project.id}/assignees`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ teamMemberIds: newMemberIds }),
+      })
+      if (res.ok) {
+        fetchProjectDetails()
+        setNewMemberIds([])
+        setShowAddMemberForm(false)
+      } else {
+        alert('Failed to add members')
+      }
+    } catch (err) {
+      console.error('Error adding members:', err)
+      alert('Error adding members')
+    }
+  }
+
+  const toggleMaterialSelect = (id: string) => {
+    setSelectedMaterialIds((prev) =>
+      prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
+    )
+  }
+
+  const handleAddMaterials = async () => {
+    if (!selectedMaterialIds.length) return
+    try {
+      const token = await getToken({ template: 'backend-access' })
+      const res = await fetch(`/api/projects/${project.id}/materials`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ materialIds: selectedMaterialIds }),
+      })
+      if (res.ok) {
+        fetchProjectDetails()
+        setSelectedMaterialIds([])
+        setMaterialSearch('')
+        setShowAddMaterialForm(false)
+      } else {
+        alert('Failed to add materials')
+      }
+    } catch (err) {
+      console.error('Error adding materials:', err)
+      alert('Error adding materials')
+    }
   }
 
   return (
@@ -179,7 +309,9 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           ))}
         </ul>
         <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">ADD TASKS</button>
+          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddTaskForm(!showAddTaskForm)}>
+            ADD TASKS
+          </button>
           <button
             className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
             onClick={() => setShowAllTasks(!showAllTasks)}
@@ -187,19 +319,81 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             {showAllTasks ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
           </button>
         </div>
+        {showAddTaskForm && (
+          <div className="mt-4 p-4 border rounded">
+            <form onSubmit={handleAddTask}>
+              <input
+                value={newTaskName}
+                onChange={(e) => setNewTaskName(e.target.value)}
+                placeholder="Task Name"
+                className="border border-gray-300 rounded px-3 py-2 mb-2 w-full text-black"
+              />
+              <input
+                value={newStartDate}
+                onChange={(e) => setNewStartDate(e.target.value)}
+                type="date"
+                placeholder="Task Start"
+                className="border border-gray-300 rounded px-3 py-2 mb-2 w-full text-black"
+              />
+              <input
+                value={newDeadline}
+                onChange={(e) => setNewDeadline(e.target.value)}
+                type="date"
+                placeholder="Task Deadline"
+                className="border border-gray-300 rounded px-3 py-2 mb-2 w-full text-black"
+              />
+              <select
+                value={newAssigneeId}
+                onChange={(e) => setNewAssigneeId(e.target.value)}
+                className="border border-gray-300 rounded px-3 py-2 mb-2 w-full text-black"
+              >
+                <option value="">Select Assignee</option>
+                {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </select>
+              <button type="button" onClick={addNewSubtask} className="text-black hover:underline mb-2">
+                Add Subtask
+              </button>
+              {newSubtasks.map((sub, j) => (
+                <input
+                  key={j}
+                  value={sub}
+                  onChange={(e) => updateNewSubtask(j, e.target.value)}
+                  placeholder="Subtask"
+                  className="border border-gray-300 rounded px-3 py-2 mb-2 w-full text-black"
+                />
+              ))}
+              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                Save Task
+              </button>
+            </form>
+          </div>
+        )}
 
         <h2 className="text-2xl font-bold">ASSIGNED TEAM MEMBERS</h2>
         <div className="space-y-4">
-          {visibleMembers.map((member, index) => (
-            <ItemCard key={index} imageSrc="/profile-icon.jpg" alt="Profile">
-              <p>NAME: {member.name}</p>
-              <p>TASK: {member.task}</p>
-              <p>% OF COMPLETION: {member.completion}</p>
-            </ItemCard>
-          ))}
+          <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-fill-color:#D7FAEA] [--progress-padding:0.155rem]">
+            {visibleMembers.map((member) => {
+              const memberTasks = project.tasks.filter((t) => t.assignees.some((a) => a.teamMember.id === member.id));
+              const progress = memberTasks.length > 0 
+                ? Math.round(memberTasks.reduce((sum, t) => sum + t.progress, 0) / memberTasks.length) 
+                : 0;
+              return (
+                <MemberItem
+                  key={member.id}
+                  name={member.name}
+                  role={member.role || 'Unknown'}
+                  progress={progress}
+                  onClick={() => {}}  // Add if needed
+                  imageUrl={member.imageUrl}
+                />
+              );
+            })}
+          </div>
         </div>
         <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">ADD TEAM MEMBER</button>
+          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddMemberForm(!showAddMemberForm)}>
+            ADD TEAM MEMBER
+          </button>
           <button
             className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
             onClick={() => setShowAllMembers(!showAllMembers)}
@@ -207,6 +401,28 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             {showAllMembers ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
           </button>
         </div>
+        {showAddMemberForm && (
+          <div className="mt-4 p-4 border rounded">
+            <label className="block mb-2">Select Team Members</label>
+            <select
+              multiple
+              value={newMemberIds}
+              onChange={(e) => setNewMemberIds(Array.from(e.target.selectedOptions, (o) => o.value))}
+              className="border border-gray-300 rounded px-3 py-2 w-full text-black"
+            >
+              {members
+                .filter((m) => !project.assignees.some((a) => a.id === m.id))
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+            </select>
+            <button onClick={handleAddMembers} className="mt-2 bg-blue-500 text-white px-4 py-2 rounded">
+              Add Members
+            </button>
+          </div>
+        )}
 
         <h2 className="text-2xl font-bold">FABRICS / TRIMS / FUSING / +</h2>
         <div className="flex space-x-2 mb-4 border-b">
@@ -223,24 +439,32 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               {category.toUpperCase()}
             </button>
           ))}
+          <img src="/search.png" alt="Search" className="ml-auto w-[30px] h-[30px]" />
           <button
             disabled
-            className="ml-auto text-sm text-gray-400 border px-3 py-2 rounded-t-md cursor-not-allowed"
+            className="text-sm text-gray-400 border px-3 py-2 rounded-t-md cursor-not-allowed"
           >
             +
           </button>
         </div>
         <div className="space-y-4">
-          {visibleMaterials.map((material) => (
-            <ItemCard key={material.id} imageSrc="/fabric.jpg" alt="Fabric">
-              <h3 className="font-semibold text-lg">PRODUCT NAME: {material.name}</h3>
-              <p className="text-sm text-gray-600">QUANTITY AVAILABLE: {material.length}m</p>
-              <p className="text-sm text-gray-500">E-SCORE {material.eScore} / 100</p>
-            </ItemCard>
-          ))}
+          <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-padding:0.155rem]">
+            {visibleMaterials.map((material) => (
+              <MaterialItem
+                key={material.id}
+                name={material.name}
+                length={material.length}
+                eScore={material.eScore}
+                onClick={() => {}}
+                imageUrl={material.imageUrl}
+              />
+            ))}
+          </div>
         </div>
         <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800">ADD MATERIAL</button>
+          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddMaterialForm(!showAddMaterialForm)}>
+            ADD MATERIAL
+          </button>
           <button
             className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
             onClick={() => setShowAllMaterials(!showAllMaterials)}
@@ -248,6 +472,53 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             {showAllMaterials ? 'HIDE INVENTORY' : 'EXPAND INVENTORY'}
           </button>
         </div>
+        {showAddMaterialForm && (
+          <div className="mt-4 p-4 border rounded">
+            <input
+              type="text"
+              placeholder="Search materials"
+              value={materialSearch}
+              onChange={(e) => setMaterialSearch(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 mb-4 w-full text-black"
+            />
+            <div className="flex space-x-2 mb-4">
+              {allCategories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setActiveAddCategory(category)}
+                  className={`text-sm font-medium px-4 py-2 rounded-t-md transition-all ${
+                    activeAddCategory === category ? 'bg-white text-black' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  {category.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-4">
+              {allMaterials
+                .filter(
+                  (m) =>
+                    m.category === activeAddCategory &&
+                    !project.materials.some((pm) => pm.id === m.id) &&
+                    m.name.toLowerCase().includes(materialSearch.toLowerCase())
+                )
+                .map((m) => (
+                  <div key={m.id} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedMaterialIds.includes(m.id)}
+                      onChange={() => toggleMaterialSelect(m.id)}
+                      className="mr-2"
+                    />
+                    <span>{m.name} (Quantity: {m.length}m, E-Score: {m.eScore})</span>
+                  </div>
+                ))}
+            </div>
+            <button onClick={handleAddMaterials} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+              Add Selected Materials
+            </button>
+          </div>
+        )}
 
         <h2 className="text-2xl font-bold">COMPLETION FORECAST</h2>
         <h3 className="text-sm text-gray-500">BASED ON DEADLINE, TASKS TO REALISE, AND TIME ESTIMATE TO DO SO</h3>
@@ -278,7 +549,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                       if (confirm('Delete this note?')) {
                         try {
                           const token = await getToken({ template: 'backend-access' })
-                          const res = await fetch(`/api/projects/notes/${note.id}`, {  // Added /api
+                          const res = await fetch(`/api/projects/notes/${note.id}`, {  
                             method: 'DELETE',
                             headers: { Authorization: `Bearer ${token}` },
                           })
@@ -360,7 +631,7 @@ function EditNoteModal({ note, onClose, onSuccess }: EditNoteModalProps) {
     setLoading(true)
     try {
       const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/api/projects/notes/${note.id}`, {  // Added /api
+      const res = await fetch(`/api/projects/notes/${note.id}`, {  
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -417,7 +688,7 @@ function AddNoteModal({ projectId, onClose, onSuccess }: AddNoteModalProps) {
     setLoading(true)
     try {
       const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/api/projects/${projectId}/notes`, {  // Added /api
+      const res = await fetch(`/api/projects/${projectId}/notes`, {  
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -474,7 +745,7 @@ function AllNotesModal({ notes, onClose, onSuccess }: AllNotesModalProps) {
     if (confirm('Delete this note?')) {
       try {
         const token = await getToken({ template: 'backend-access' })
-        const res = await fetch(`/api/projects/notes/${noteId}`, {  // Added /api
+        const res = await fetch(`/api/projects/notes/${noteId}`, {  
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` },
         })

@@ -1,3 +1,4 @@
+// backend/src/material/material.controller.ts
 import {
   Controller,
   Post,
@@ -11,9 +12,11 @@ import {
   UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { MaterialService } from './material.service';
-import { CreateMaterialDto } from './dto/create-material.dto';
-import { CreateMaterialHistoryDto } from './dto/create-material-history.dto';
+import { MaterialService } from './material.service.js';
+import { CreateMaterialDto } from './dto/create-material.dto.js';
+import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
+import { Multer } from 'multer';
+import { Prisma } from '@prisma/client'; // For Prisma types
 import express from 'express';
 type Request = express.Request;
 
@@ -27,16 +30,18 @@ export class MaterialController {
   @UseInterceptors(FileInterceptor('image'))
   async create(
     @Body() dto: CreateMaterialDto,
-    @UploadedFile() image: Express.Multer.File,
     @Req() req: Request,
+    @UploadedFile() image?: Express.Multer.File, // Optional last in signature
   ) {
     const userId = req.user?.id;
     return this.materialService.create(dto, userId, image);
   }
 
   @Get()
-  findAll() {
-    return this.materialService.findAllWithCategoryAndNotes();
+  findAll(@Req() req: Request) {
+    const teamId = req.user?.teamId;
+    if (!teamId) throw new Error('Unauthorized - No team ID');
+    return this.materialService.findAllWithCategoryAndNotes(teamId);
   }
 
   // Moved up: Specific route before dynamic :id
@@ -55,7 +60,7 @@ export class MaterialController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() data: Prisma.MaterialUpdateInput) {
+  update(@Param('id') id: string, @Body() data: Prisma.MaterialUpdateInput) { // Fixed Prisma type
     return this.materialService.update(id, data);
   }
 

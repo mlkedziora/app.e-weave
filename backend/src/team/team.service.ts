@@ -19,9 +19,9 @@ export class TeamService {
     });
 
     // Create Clerk organization and sync
-    const org = await this.clerkClient.organizations.create({
+    const org = await this.clerkClient.organizations.createOrganization({ // Fixed
       name: dto.name,
-      createdBy: userId, // Admin/creator
+      createdBy: userId,
     });
 
     // Update Prisma with clerkOrgId
@@ -30,22 +30,22 @@ export class TeamService {
       data: { clerkOrgId: org.id },
     });
 
-    // Add creator as admin member (adjust name/email fetch as needed, e.g., from Clerk)
-    const adminUser = await this.clerkClient.users.get(userId); // Fetch details
+    // Add creator as admin member
+    const adminUser = await this.clerkClient.users.getUser(userId); // Fixed
     await this.prisma.teamMember.create({
       data: {
         userId,
-        email: adminUser.primaryEmailAddress?.emailAddress, // Or dto if provided
-        name: adminUser.fullName || 'Admin', // Fallback
+        email: adminUser.primaryEmailAddress?.emailAddress,
+        name: adminUser.fullName || 'Admin',
         role: 'admin',
-        position: 'Admin', // Adjust
+        position: 'Admin',
         teamId: team.id,
         startDate: new Date(),
       },
     });
 
-    // Update user's metadata for auth
-    await this.clerkClient.users.update(userId, {
+    // Update user's metadata
+    await this.clerkClient.users.updateUser(userId, { // Fixed
       publicMetadata: { role: 'admin', teamId: team.id },
     });
 

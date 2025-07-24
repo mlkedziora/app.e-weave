@@ -3,7 +3,8 @@ import { Controller, Get, Post, Body, Param, Req, UseInterceptors, UploadedFile 
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MemberService } from './member.service.js';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto.js';
-import { Roles } from '../auth/roles.decorator.js'; // Add this
+import { Roles } from '../auth/roles.decorator.js';
+import { Multer } from 'multer';
 import express from 'express';
 type Request = express.Request;
 
@@ -11,13 +12,13 @@ type Request = express.Request;
 export class MemberController {
   constructor(private readonly memberService: MemberService) {}
 
-  @Roles('admin') // Add this
+  @Roles('admin')
   @Post()
   @UseInterceptors(FileInterceptor('image'))
   async create(
     @Body() dto: CreateTeamMemberDto,
-    @UploadedFile() image: Express.Multer.File,
-    @Req() req: Request
+    @Req() req: Request,
+    @UploadedFile() image?: Express.Multer.File, // Optional last
   ) {
     const userId = req.user?.id;
     return this.memberService.create(dto, userId, image);

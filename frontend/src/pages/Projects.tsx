@@ -1,5 +1,7 @@
+// frontend/src/pages/Projects.tsx
 import ProjectsOverview from '../components/projects/ProjectsOverview'
 import ProjectDetail from '../components/projects/ProjectDetail'
+import ErrorBoundary from '../components/common/ErrorBoundary'
 import { useState } from 'react'
 
 export default function Projects() {
@@ -13,7 +15,9 @@ export default function Projects() {
 
       <div className="col-span-2 h-full">
         {selectedProjectId ? (
-          <ProjectDetail projectId={selectedProjectId} />
+          <ErrorBoundary>
+            <ProjectDetail projectId={selectedProjectId} />
+          </ErrorBoundary>
         ) : (
           <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">
             Select a project to view details

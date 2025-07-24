@@ -129,7 +129,7 @@ model Material {
   id               String    @id @default(cuid())
   name             String
   imageUrl         String?
-  categoryId       String
+  categoryId       String?   // Made optional
   fiber            String
   length           Float
   width            Float
@@ -146,7 +146,7 @@ model Material {
   teamId           String
 
   team     Team             @relation(fields: [teamId], references: [id])
-  category MaterialCategory @relation(fields: [categoryId], references: [id])
+  category MaterialCategory? @relation(fields: [categoryId], references: [id]) // Updated relation
 
   history       MaterialHistory[]
   assignedTo    ProjectMaterial[]

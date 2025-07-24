@@ -6,7 +6,7 @@ console.log('✅ Step 1: Imported NestFactory');
 import { AppModule } from './app.module.js';
 console.log('✅ Step 2: Imported AppModule');
 
-import { ValidationPipe, HttpServer } from '@nestjs/common'; // Updated: Added HttpServer for shutdown hooks
+import { ValidationPipe } from '@nestjs/common';
 console.log('✅ Step 3: Imported ValidationPipe');
 
 import dotenv from 'dotenv';
@@ -25,7 +25,7 @@ async function bootstrap() {
     const safeEnv = { ...process.env };
     delete safeEnv.CLERK_SECRET_KEY; // Mask Clerk secret
     delete safeEnv.DATABASE_URL; // Mask DB URL (contains password)
-    // Add more deletions if you have other secrets, e.g., delete safeEnv.OTHER_SECRET;
+    // Add more deletions if you have other secrets
     console.log('Safe process.env (masked):', safeEnv);
   }
 
@@ -51,8 +51,8 @@ async function bootstrap() {
   );
   console.log('✅ Step 8: Applied global validation');
 
-  // Add graceful shutdown hooks
-  app.enableShutdownHooks(app.get(HttpServer)); // For clean app close on signals
+  // Add graceful shutdown hooks (fixed: no arg needed)
+  app.enableShutdownHooks();
 
   await app.listen(3000);
   console.log('🚀 Step 9: Backend is running on http://localhost:3000');

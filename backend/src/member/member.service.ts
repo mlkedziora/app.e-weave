@@ -1,45 +1,45 @@
 // backend/src/member/member.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { createClerkClient } from '@clerk/backend';  // Updated import
+import { createClerkClient } from '@clerk/backend';
 import { CreateTeamMemberDto } from './dto/create-team-member.dto.js';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client'; // For Prisma types
+import { Express } from 'express'; // For Multer typing
 
 type TeamMemberWithDetails = Prisma.TeamMemberGetPayload<{
   include: {
     performanceMetrics: true;
     growthForecasts: true;
     materialHistories: { include: { material: { select: { name: true; color: true; fiber: true } } } };
-    assignedTasks: { include: { project: { select: { name: true } }; subtasks: true } };
+    assignedTasks: { include: { task: { include: { project: { select: { name: true } }; subtasks: true } } } };
   };
 }>;
 
 @Injectable()
 export class MemberService {
-  private clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });  // Updated initialization
+  private clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateTeamMemberDto, userId: string, image?: Express.Multer.File) { 
+  async create(dto: CreateTeamMemberDto, userId: string, image?: Express.Multer.File) {
     if (!userId) throw new Error('User ID required for team member creation');
 
-    // Get admin's team (assume req.user.teamId is set in middleware; fallback to query if needed)
     const adminTeamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!adminTeamMember) throw new Error('Admin team member not found');
     const teamId = adminTeamMember.teamId;
     const team = await this.prisma.team.findUnique({ where: { id: teamId } });
     if (!team?.clerkOrgId) throw new Error('Team not synced with Clerk organization');
 
-    // Create pending DB entry
     const data: Prisma.TeamMemberCreateInput = {
       name: dto.name,
-      email: dto.email,  // New: For webhook matching
+      email: dto.email,
       position: dto.position,
       startDate: dto.startDate ? new Date(dto.startDate) : new Date(),
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
-      userId: null,  // Pending
-      teamId,
+      userId: null,
+      team: { connect: { id: teamId } }, // Fixed: use team connect instead of teamId
       imageUrl: image ? `/uploads/${image.filename}` : null,
-      role: 'member',  // Default; add to DTO/form if customizable
+      role: 'member',
     };
 
     const member = await this.prisma.teamMember.create({ data });
@@ -51,42 +51,37 @@ export class MemberService {
       });
     }
 
-    // Send Clerk organization invitation
     const invitation = await this.clerkClient.organizations.createOrganizationInvitation({
-      organizationId: team.clerkOrgId,  // Use synced ID
+      organizationId: team.clerkOrgId,
       emailAddress: dto.email,
       inviterUserId: userId,
       role: 'org:member',
       publicMetadata: { role: 'member', teamId },
-      redirectUrl: 'http://localhost:5173/sign-up',  // Adjust for prod
+      redirectUrl: 'http://localhost:5173/sign-up',
     });
 
-    console.log(`Invitation sent to ${dto.email}: ${invitation.publicInvitationUrl}`);
+    console.log(`Invitation sent to ${dto.email}: ${invitation.url}`);
 
     return member;
   }
 
-  // Updated: Handle Clerk webhook for membership created
   async handleClerkWebhook(payload: any) {
     if (payload.type === 'organizationMembership.created') {
       const { user_id, organization_id } = payload.data;
 
-      // Get user details from Clerk
-      const user = await this.clerkClient.users.get(user_id);
+      const user = await this.clerkClient.users.getUser(user_id);
       const email = user.emailAddresses.find(e => e.id === user.primaryEmailAddressId)?.emailAddress;
       if (!email) {
         console.error('No primary email found for user');
         return { success: false };
       }
 
-      // Find matching team via clerkOrgId
       const team = await this.prisma.team.findFirst({ where: { clerkOrgId: organization_id } });
       if (!team) {
         console.error('No team found for organization');
         return { success: false };
       }
 
-      // Find pending member by email and team
       const member = await this.prisma.teamMember.findFirst({
         where: { email, userId: null, teamId: team.id },
       });
@@ -95,14 +90,12 @@ export class MemberService {
         return { success: false };
       }
 
-      // Update member
       await this.prisma.teamMember.update({
         where: { id: member.id },
-        data: { userId: user_id, email: null }, // Clear email
+        data: { userId: user_id, email: null },
       });
 
-      // Set user's publicMetadata (for auth middleware)
-      await this.clerkClient.users.update(user_id, {
+      await this.clerkClient.users.updateUser(user_id, {
         publicMetadata: { role: member.role, teamId: member.teamId },
       });
 

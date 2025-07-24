@@ -1,0 +1,15 @@
+# backend/.dockerignore
+
+.env
+node_modules
+dist
+.git
+# Add other ignores
+logs
+*.log
+coverage
+.idea
+.vscode
+.tmp
+.temp
+prisma/migrations  # If not needed in image

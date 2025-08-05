@@ -47,7 +47,6 @@ export class TaskService {
           data: { taskId: task.id, teamMemberId: dto.assigneeId },
         });
 
-        // Ensure the assignee is added to the project if not already
         const existing = await tx.projectAssignee.findFirst({
           where: { projectId: dto.projectId, teamMemberId: dto.assigneeId },
         });
@@ -59,6 +58,103 @@ export class TaskService {
       }
 
       return task;
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.task.findUnique({
+      where: { id },
+      include: {
+        assignees: {
+          include: { teamMember: true },
+        },
+        subtasks: true,
+        taskMaterials: {
+          include: {
+            material: true,
+            teamMember: { select: { name: true } },
+          },
+        },
+        materialHistories: {
+          include: {
+            material: true,
+            teamMember: { select: { name: true } },
+          },
+        },
+      },
+    });
+  }
+
+  async addMaterial(taskId: string, materialId: string, amountUsed: number, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const teamMember = await tx.teamMember.findFirst({ where: { userId } });
+      if (!teamMember) throw new Error('Team member not found');
+
+      const task = await tx.task.findUnique({ where: { id: taskId }, select: { projectId: true } });
+      if (!task) throw new Error('Task not found');
+
+      const assigned = await tx.projectMaterial.findFirst({
+        where: { projectId: task.projectId, materialId },
+      });
+      if (!assigned) throw new Error('Material not assigned to the project');
+
+      const material = await tx.material.findUnique({ where: { id: materialId } });
+      if (!material) throw new Error('Material not found');
+      if (material.length < amountUsed) throw new Error('Insufficient material');
+
+      const newLength = material.length - amountUsed;
+
+      await tx.material.update({
+        where: { id: materialId },
+        data: { length: newLength },
+      });
+
+      await tx.materialHistory.create({
+        data: {
+          materialId,
+          teamMemberId: teamMember.id,
+          previousLength: material.length,
+          newLength,
+          taskId,
+        },
+      });
+
+      return tx.taskMaterial.create({
+        data: {
+          taskId,
+          materialId,
+          amountUsed,
+          teamMemberId: teamMember.id,
+        },
+      });
+    });
+  }
+
+  async delete(id: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const teamMember = await tx.teamMember.findFirst({ where: { userId } });
+      if (!teamMember) {
+        throw new Error('Team member not found');
+      }
+
+      const task = await tx.task.findUnique({
+        where: { id },
+        include: { assignedBy: true },
+      });
+      if (!task) {
+        throw new Error('Task not found');
+      }
+
+      if (task.assignedById !== teamMember.id && teamMember.role !== 'admin') {
+        throw new Error('Not authorized to delete this task');
+      }
+
+      await tx.subtask.deleteMany({ where: { taskId: id } });
+      await tx.taskAssignee.deleteMany({ where: { taskId: id } });
+      await tx.taskMaterial.deleteMany({ where: { taskId: id } });
+      await tx.materialHistory.deleteMany({ where: { taskId: id } });
+
+      return tx.task.delete({ where: { id } });
     });
   }
 }

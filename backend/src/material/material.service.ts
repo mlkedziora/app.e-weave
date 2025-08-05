@@ -139,18 +139,78 @@ export class MaterialService {
   async findOneWithDetails(id: string) {
     return this.prisma.material.findUnique({
       where: { id },
-      include: { history: true, materialNotes: true },
+      include: {
+        history: {
+          include: {
+            teamMember: { select: { name: true } }, // For "User Taking"
+            task: {
+              include: {
+                project: { select: { name: true } }, // For "Project"
+              },
+            }, // For "Task" name
+          },
+        },
+        materialNotes: {
+          include: {
+            teamMember: { select: { name: true, userId: true } }, // For note author + edit auth
+          },
+        },
+        assignedTo: { // Bonus: For "ASSIGNED PROJECTS" if needed deeper
+          include: { project: true },
+        },
+      },
     });
   }
 
-  async createHistoryEntry(materialId: string, userId: string, dto: CreateMaterialHistoryDto) {
-    return this.prisma.materialHistory.create({
-      data: {
-        materialId,
-        teamMemberId: userId,
-        previousLength: dto.previousLength,
-        newLength: dto.newLength,
-      },
+  async createHistoryEntry(materialId: string, userId: string, dto: CreateMaterialHistoryDto & { taskId?: string }) {
+    return this.prisma.$transaction(async (tx) => {
+      const teamMember = await tx.teamMember.findFirst({ where: { userId } });
+      if (!teamMember) throw new Error('Team member not found');
+
+      const material = await tx.material.findUnique({ where: { id: materialId } });
+      if (!material) throw new Error('Material not found');
+
+      // Create history entry
+      const history = await tx.materialHistory.create({
+        data: {
+          materialId,
+          teamMemberId: teamMember.id,
+          previousLength: dto.previousLength,
+          newLength: dto.newLength,
+          taskId: dto.taskId,  // Add this; undefined -> null if not provided
+        },
+      });
+
+      // If taskId provided, create TaskMaterial and validate
+      if (dto.taskId) {
+        const task = await tx.task.findUnique({ where: { id: dto.taskId }, include: { project: true } });
+        if (!task) throw new Error('Task not found');
+
+        const assigned = await tx.projectMaterial.findFirst({
+          where: { projectId: task.projectId, materialId },
+        });
+        if (!assigned) throw new Error('Material not assigned to the project');
+
+        const amountUsed = dto.previousLength - dto.newLength;
+        if (amountUsed <= 0) throw new Error('Amount used must be positive');
+
+        await tx.taskMaterial.create({
+          data: {
+            taskId: dto.taskId,
+            materialId,
+            amountUsed,
+            teamMemberId: teamMember.id,  // Add this
+          },
+        });
+      }
+
+      // Update material length
+      await tx.material.update({
+        where: { id: materialId },
+        data: { length: dto.newLength },
+      });
+
+      return history;
     });
   }
 

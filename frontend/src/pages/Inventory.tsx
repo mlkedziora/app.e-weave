@@ -92,7 +92,6 @@ export default function Inventory() {
   if (!materials) return <div className="h-full flex items-center justify-center p-4 text-black">Loading materials...</div>
   if (materials.length === 0) return <div className="h-full flex items-center justify-center p-4 text-black">No materials found.</div>
 
-  // ... (rest of the file unchanged)
 
   return (
     <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden"> {/* ✅ Add grid-rows-1 */}

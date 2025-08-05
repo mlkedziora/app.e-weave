@@ -1,30 +1,128 @@
 // frontend/src/components/inventory/MaterialDetail.tsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import MaterialHistoryFull from './MaterialHistoryFull'
 import UpdateQuantityModal from './UpdateQuantityModal'
 import AdditionalMetrics from './AdditionalMetrics'
 import EditNoteModal from './EditNoteModal'
 import AddNoteModal from './AddNoteModal'
 import AllNotesModal from './AllNotesModal'
+import AddQuantityModal from './AddQuantityModal'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import ScrollablePanel from '../common/ScrollablePanel' // ✅ Use for panel + scroll
 import EmptyPanel from '../common/EmptyPanel' // ✅ Use for no-material state
 import Typography from '../common/Typography'
 import StyledLink from '../common/StyledLink'
 
+interface HistoryEntry {
+  teamMember?: { name: string };
+  task?: { name: string; project?: { name: string } };
+  previousLength: number;
+  newLength: number;
+  changedAt: string;
+}
+
+interface Note {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+  teamMember?: { name: string; userId: string };
+}
+
 type MaterialDetailProps = {
-  material: any
+  material: {
+    id: string;
+    name: string;
+    length: number;
+    fiber: string;
+    supplier: string;
+    pricePerMeter: number;
+    certifications?: string;
+    history: HistoryEntry[];
+    materialNotes: Note[];
+    assignedTo?: { project: { id: string; name: string } }[]; // For projects
+  };
   onRefresh: (newLength?: number) => void
+}
+
+const ProjectTasksView = ({ project, onClose }: { project: any; onClose: () => void }) => {
+  const [tasks, setTasks] = useState<any[]>([])
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
+  const { getToken } = useAuth()
+
+  useEffect(() => {
+    const fetchProjectTasks = async () => {
+      try {
+        const token = await getToken({ template: 'backend-access' })
+        const res = await fetch(`/api/projects/${project.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setTasks(data.tasks || [])
+        }
+      } catch (err) {
+        console.error('Failed to fetch project tasks:', err)
+      }
+    }
+    fetchProjectTasks()
+  }, [project.id, getToken])
+
+  const toggleSubtasks = (taskId: string) => {
+    setExpandedTaskId(expandedTaskId === taskId ? null : taskId)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded shadow-md w-96 max-h-96 overflow-y-auto">
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">Tasks for {project.name}</Typography>
+        <div className="space-y-4">
+          {tasks.map((task) => (
+            <div key={task.id} className="border p-4 rounded bg-gray-50 space-y-2">
+              <StyledLink onClick={() => toggleSubtasks(task.id)} className="text-black">
+                {task.name}
+              </StyledLink>
+              <Typography variant="13" className="text-black">
+                Assigned to: {task.assignees?.map((a: any) => a.teamMember.name).join(', ') || 'Unassigned'}
+              </Typography>
+              <Typography variant="13" className="text-black">
+                Start: {task.startedAt ? new Date(task.startedAt).toLocaleDateString() : 'N/A'}
+              </Typography>
+              <Typography variant="13" className="text-black">
+                Deadline: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'N/A'}
+              </Typography>
+              {expandedTaskId === task.id && (
+                <div className="mt-2 space-y-2">
+                  <Typography variant="13" weight="light" className="text-black">Top 5 Subtasks:</Typography>
+                  {task.subtasks
+                    ?.sort((a: any, b: any) => a.completed - b.completed || a.name.localeCompare(b.name))
+                    .slice(0, 5)
+                    .map((sub: any, idx: number) => (
+                      <Typography key={idx} variant="13" className="text-black">
+                        {sub.name} {sub.completed ? '(Completed)' : ''}
+                      </Typography>
+                    )) || <Typography variant="13" className="text-black italic">No subtasks</Typography>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <StyledLink onClick={onClose} className="mt-4 text-black block">Close</StyledLink>
+      </div>
+    </div>
+  )
 }
 
 export default function MaterialDetail({ material, onRefresh }: MaterialDetailProps) {
   const [showFullHistory, setShowFullHistory] = useState(false)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
+  const [showAddQuantityModal, setShowAddQuantityModal] = useState(false)
   const [showAdditionalMetrics, setShowAdditionalMetrics] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedNote, setSelectedNote] = useState(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAllNotes, setShowAllNotes] = useState(false)
+  const [selectedProject, setSelectedProject] = useState<any | null>(null)
 
   const { user: currentUser } = useUser()
   const { getToken } = useAuth()
@@ -60,23 +158,29 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
         </div>
       </div>
 
-      {/* ASSIGNED TASKS */}
+      {/* ASSIGNED PROJECTS */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-2 text-black">ASSIGNED TASKS</Typography>
-        <Typography variant="13" className="text-black italic">
-          [Currently unlinked — backend does not relate tasks to materials]
-        </Typography>
-        <StyledLink onClick={() => {}} className="mt-4 text-black block">Add Tasks</StyledLink> {/* ✅ Block for new line */}
+        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-2 text-black">ASSIGNED PROJECTS</Typography>
+        <div className="space-y-4">
+          {material.assignedTo?.map((pm: any, i: number) => (
+            <StyledLink key={i} onClick={() => setSelectedProject(pm.project)} className="text-black block">
+              {pm.project?.name || 'N/A'}
+            </StyledLink>
+          )) || <Typography variant="13" className="text-black italic">No assigned projects.</Typography>}
+        </div>
+        <StyledLink onClick={() => {}} className="mt-4 text-black block">Add Projects</StyledLink> {/* Placeholder for add functionality */}
       </div>
 
       {/* QUANTITY TRACKING */}
       <div>
         <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">TRACK QUANTITY</Typography>
-        <div className="space-y-4"> {/* ✅ Increased spacing */}
+        <div className="space-y-4">
           {Array.isArray(material.history) && material.history.length > 0 ? (
-            material.history.slice(0, 6).map((entry: any, i: number) => (
-              <div key={i} className="border p-4 rounded bg-gray-50 space-y-2"> {/* ✅ Increased padding */}
+            material.history.slice(0, 6).map((entry: any) => ( // Removed i param, use entry.id for key
+              <div key={entry.id} className="border p-4 rounded bg-gray-50 space-y-2"> {/* Changed key to entry.id */}
                 <Typography variant="15" className="text-black">User Taking: {entry.teamMember?.name || 'Unknown'}</Typography>
+                <Typography variant="15" className="text-black">Project: {entry.task?.project?.name || 'N/A'}</Typography>
+                <Typography variant="15" className="text-black">Task: {entry.task?.name || 'N/A'}</Typography>
                 <Typography variant="15" className="text-black">Previous Amount: {entry.previousLength} m</Typography>
                 <Typography variant="15" className="text-black">New Amount: {entry.newLength} m</Typography>
                 <Typography variant="15" className="text-black">Timestamp: {new Date(entry.changedAt).toLocaleString()}</Typography>
@@ -91,6 +195,12 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           className="mt-4 text-black block"
         >
           Update Quantity
+        </StyledLink>
+        <StyledLink
+          onClick={() => setShowAddQuantityModal(true)}
+          className="mt-4 text-black block"
+        >
+          Add Quantity
         </StyledLink>
         <StyledLink
           onClick={() => setShowFullHistory(true)}
@@ -114,6 +224,17 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
             onSuccess={(newLength) => {
               console.log('[MaterialDetail] onSuccess triggered');
               setShowUpdateModal(false);
+              onRefresh(newLength);
+            }}
+          />
+        )}
+        {showAddQuantityModal && (
+          <AddQuantityModal
+            materialId={material.id}
+            currentLength={material.length}
+            onClose={() => setShowAddQuantityModal(false)}
+            onSuccess={(newLength) => {
+              setShowAddQuantityModal(false);
               onRefresh(newLength);
             }}
           />
@@ -165,7 +286,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
               </Typography>
               <Typography variant="15" className="text-black">{note.content}</Typography>
               {note.teamMember?.userId === currentUser?.id && (
-                <div className="mt-2 flex gap-4"> {/* ✅ Increased mt and gap */}
+                <div className="mt-1 flex gap-4"> {/* ✅ Increased mt and gap */}
                   <StyledLink
                     onClick={() => {
                       setSelectedNote(note);
@@ -226,6 +347,10 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           <AllNotesModal notes={material.materialNotes} onClose={() => setShowAllNotes(false)} />
         )}
       </div>
+
+      {selectedProject && (
+        <ProjectTasksView project={selectedProject} onClose={() => setSelectedProject(null)} />
+      )}
     </ScrollablePanel>
   )
 }

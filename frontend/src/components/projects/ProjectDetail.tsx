@@ -4,6 +4,7 @@ import { useAuth } from '@clerk/clerk-react'
 import ScrollableContainer from '../common/ScrollableContainer'
 import MemberItem from '../common/MemberItem'
 import MaterialItem from '../common/MaterialItem'
+import TaskDetail from './TaskDetail';
 
 interface TaskAssignee {
   teamMember: {
@@ -82,6 +83,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [activeAddCategory, setActiveAddCategory] = useState('Fabrics')
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([])
   const [materialSearch, setMaterialSearch] = useState('')
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
 
   const fetchProjectDetails = async () => {
     setError(null);
@@ -302,7 +304,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         <h2 className="text-2xl font-bold">ASSIGNED TASKS</h2>
         <ul className="space-y-2">
           {visibleTasks.map((task) => (
-            <li key={task.id} className="flex items-center">
+            <li 
+              key={task.id} 
+              className="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded"
+              onClick={() => setSelectedTask(task)}
+            >
               <span className="mr-2">◯</span>
               {task.name} (Assigned to: {task.assignees.map(a => a.teamMember.name).join(', ') || 'Unassigned'}, Progress: {task.progress}%)
             </li>
@@ -367,6 +373,13 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
               </button>
             </form>
           </div>
+        )}
+
+        {selectedTask && (
+          <TaskDetail 
+            task={selectedTask} 
+            onClose={() => setSelectedTask(null)} 
+          />
         )}
 
         <h2 className="text-2xl font-bold">ASSIGNED TEAM MEMBERS</h2>

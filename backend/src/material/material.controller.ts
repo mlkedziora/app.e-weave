@@ -72,15 +72,11 @@ export class MaterialController {
   @Post(':id/history')
   createHistoryEntry(
     @Param('id') materialId: string,
-    @Body() dto: CreateMaterialHistoryDto,
+    @Body() dto: CreateMaterialHistoryDto & { taskId?: string },  // Extended with optional taskId
     @Req() req: Request
   ) {
-    console.log('[MaterialController] Received DTO:', dto);
-    console.log('[MaterialController] req.user:', req.user); // ✅ Add this
-
     const userId = req.user?.id;
     if (!userId) throw new Error('Unauthorized');
-
     return this.materialService.createHistoryEntry(materialId, userId, dto);
   }
 

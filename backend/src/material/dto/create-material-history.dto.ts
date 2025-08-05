@@ -1,4 +1,5 @@
-import { IsDefined, IsNumber, IsDate, IsOptional } from 'class-validator';
+// backend/src/material/dto/create-material-history.dto.ts
+import { IsDefined, IsNumber, IsDate, IsOptional, IsString } from 'class-validator';
 
 export class CreateMaterialHistoryDto {
   @IsDefined()
@@ -12,4 +13,8 @@ export class CreateMaterialHistoryDto {
   @IsOptional()
   @IsDate()
   changedAt?: Date;
+
+  @IsOptional()
+  @IsString()
+  taskId?: string;
 }

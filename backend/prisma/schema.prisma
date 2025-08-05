@@ -1,3 +1,4 @@
+// backend/prisma/schema.prisma
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native"]
@@ -16,20 +17,20 @@ model Team {
   materials  Material[]
   categories MaterialCategory[]
   createdAt  DateTime           @default(now())
-  clerkOrgId String?            // New: Clerk's organization ID for sync
+  clerkOrgId String? // New: Clerk's organization ID for sync
 }
 
 model TeamMember {
   id                 String              @id @default(cuid())
-  userId             String?             @unique  // Updated: Nullable, still unique for non-null values
-  email              String?             // New: For pending invite matching (cleared after signup)
+  userId             String?             @unique // Updated: Nullable, still unique for non-null values
+  email              String? // New: For pending invite matching (cleared after signup)
   name               String
   role               String
   position           String?
   startDate          DateTime?
   endDate            DateTime?
   teamId             String
-  imageUrl           String?             // New: For profile image
+  imageUrl           String? // New: For profile image
   team               Team                @relation(fields: [teamId], references: [id])
   assignedTasks      TaskAssignee[]
   givenTasks         Task[]              @relation("GivenTasks")
@@ -39,6 +40,7 @@ model TeamMember {
   materialNotes      MaterialNote[]
   projectNotes       ProjectNote[]
   assignedProjects   ProjectAssignee[]
+  taskMaterials      TaskMaterial[]
 }
 
 model Project {
@@ -71,19 +73,22 @@ model Task {
   assignedById String
   assignedBy   TeamMember @relation("GivenTasks", fields: [assignedById], references: [id])
 
-  subtasks Subtask[]
-  assignees TaskAssignee[]
+  subtasks      Subtask[]
+  assignees     TaskAssignee[]
+  taskMaterials TaskMaterial[] // New: Relation to materials used in this task
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  materialHistories MaterialHistory[]
 }
 
 model Subtask {
-  id        String  @id @default(cuid())
-  name      String
-  completed Boolean @default(false)
-  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String
+  id          String    @id @default(cuid())
+  name        String
+  completed   Boolean   @default(false)
+  task        Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      String
+  completedAt DateTime? // Added for completion timestamp
 }
 
 model TaskAssignee {
@@ -129,7 +134,7 @@ model Material {
   id               String    @id @default(cuid())
   name             String
   imageUrl         String?
-  categoryId       String?   // Made optional
+  categoryId       String? // Made optional
   fiber            String
   length           Float
   width            Float
@@ -145,29 +150,30 @@ model Material {
   certifications   String?
   teamId           String
 
-  team     Team             @relation(fields: [teamId], references: [id])
+  team     Team              @relation(fields: [teamId], references: [id])
   category MaterialCategory? @relation(fields: [categoryId], references: [id]) // Updated relation
 
-  history       MaterialHistory[]
-  assignedTo    ProjectMaterial[]
-  materialNotes MaterialNote[]
-  climateChange               Float? @default(0.0) // kg CO₂-eq
-  ozoneDepletion              Float? @default(0.0) // kg CFC-11-eq
-  humanToxicityCancer         Float? @default(0.0) // CTUh
-  humanToxicityNonCancer      Float? @default(0.0) // CTUh
-  particulateMatter           Float? @default(0.0) // disease incidence
-  ionisingRadiation           Float? @default(0.0) // kBq U-235-eq
-  photochemicalOzoneFormation Float? @default(0.0) // kg NMVOC-eq
-  acidification               Float? @default(0.0) // mol H+-eq
-  terrestrialEutrophication   Float? @default(0.0) // mol N-eq
-  freshwaterEutrophication    Float? @default(0.0) // kg P-eq
-  marineEutrophication        Float? @default(0.0) // kg N-eq
-  freshwaterEcotoxicity       Float? @default(0.0) // CTUe
-  landUse                     Float? @default(0.0) // species-yr
-  waterScarcity               Float? @default(0.0) // m³ world-eq
-  mineralResourceDepletion    Float? @default(0.0) // kg Sb-eq
-  fossilResourceDepletion     Float? @default(0.0) // MJ
-  eScore                      Float  @default(0.0)
+  history                     MaterialHistory[]
+  assignedTo                  ProjectMaterial[]
+  materialNotes               MaterialNote[]
+  taskMaterials               TaskMaterial[] // New: Relation to tasks where this material is used
+  climateChange               Float?            @default(0.0) // kg CO₂-eq
+  ozoneDepletion              Float?            @default(0.0) // kg CFC-11-eq
+  humanToxicityCancer         Float?            @default(0.0) // CTUh
+  humanToxicityNonCancer      Float?            @default(0.0) // CTUh
+  particulateMatter           Float?            @default(0.0) // disease incidence
+  ionisingRadiation           Float?            @default(0.0) // kBq U-235-eq
+  photochemicalOzoneFormation Float?            @default(0.0) // kg NMVOC-eq
+  acidification               Float?            @default(0.0) // mol H+-eq
+  terrestrialEutrophication   Float?            @default(0.0) // mol N-eq
+  freshwaterEutrophication    Float?            @default(0.0) // kg P-eq
+  marineEutrophication        Float?            @default(0.0) // kg N-eq
+  freshwaterEcotoxicity       Float?            @default(0.0) // CTUe
+  landUse                     Float?            @default(0.0) // species-yr
+  waterScarcity               Float?            @default(0.0) // m³ world-eq
+  mineralResourceDepletion    Float?            @default(0.0) // kg Sb-eq
+  fossilResourceDepletion     Float?            @default(0.0) // MJ
+  eScore                      Float             @default(0.0)
 }
 
 model MaterialCategory {
@@ -189,6 +195,8 @@ model MaterialHistory {
   changedAt      DateTime   @default(now())
   material       Material   @relation(fields: [materialId], references: [id])
   teamMember     TeamMember @relation(fields: [teamMemberId], references: [id])
+  taskId         String? // Optional
+  task           Task?      @relation(fields: [taskId], references: [id])
 }
 
 model ProjectMaterial {
@@ -197,6 +205,18 @@ model ProjectMaterial {
   materialId String
   project    Project  @relation(fields: [projectId], references: [id])
   material   Material @relation(fields: [materialId], references: [id])
+}
+
+model TaskMaterial {
+  id           String      @id @default(cuid())
+  taskId       String
+  materialId   String
+  amountUsed   Float // Amount used (e.g., in meters)
+  usedAt       DateTime    @default(now())
+  task         Task        @relation(fields: [taskId], references: [id])
+  material     Material    @relation(fields: [materialId], references: [id])
+  teamMemberId String?
+  teamMember   TeamMember? @relation(fields: [teamMemberId], references: [id])
 }
 
 model MaterialNote {

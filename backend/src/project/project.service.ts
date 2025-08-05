@@ -111,8 +111,20 @@ export class ProjectService {
       include: {
         tasks: {
           include: {
-            assignees: {
-              include: { teamMember: { select: { id: true, name: true } } },  // Include id and name for frontend use
+            assignees: { include: { teamMember: { select: { name: true } } } },
+            subtasks: true,
+            materialHistories: {
+              include: {
+                teamMember: { select: { name: true } },
+              },
+              orderBy: { changedAt: 'desc' }, // Optional: Sort by most recent
+            },
+            taskMaterials: {
+              include: {
+                material: true,
+                teamMember: { select: { name: true } },
+              },
+              orderBy: { usedAt: 'desc' }, // Optional: Sort by most recent
             },
           },
         },
@@ -123,7 +135,7 @@ export class ProjectService {
                 category: true 
               } 
             } 
-          } 
+          }
         },
         notes: {
           include: { teamMember: { select: { id: true, name: true, userId: true } } },
@@ -135,8 +147,8 @@ export class ProjectService {
               select: { 
                 id: true, 
                 name: true, 
-                role: true,  // Add role
-                imageUrl: true  // Add imageUrl for real profiles
+                role: true,
+                imageUrl: true 
               } 
             } 
           } 

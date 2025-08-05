@@ -14,6 +14,7 @@ import { PrismaService } from './prisma/prisma.service.js';
 import { ServeStaticModule } from '@nestjs/serve-static'; // New
 import { join } from 'path'; // New
 import { TaskModule } from './task/task.module.js';
+import { SubtaskModule } from './subtask/subtask.module.js';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TaskModule } from './task/task.module.js';
       serveRoot: '/uploads',
     }),
     TaskModule, // New: Serve uploads folder
+    SubtaskModule,
   ],
   controllers: [AppController],
   providers: [

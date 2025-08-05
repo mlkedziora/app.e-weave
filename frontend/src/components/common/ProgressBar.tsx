@@ -25,7 +25,7 @@ export default function ProgressBar({
   const getFillColor = typeof fillColor === 'function' ? fillColor(progress) : fillColor;
 
   return (
-    <div className={`mt-2 ${className}`} style={{ width }}> {/* Outer wrapper for width control */}
+    <div className={`mt-1 ${className}`} style={{ width }}> {/* Outer wrapper for width control */}
       <div 
         className="overflow-hidden rounded" 
         style={{ height, backgroundColor: bgColor }} 

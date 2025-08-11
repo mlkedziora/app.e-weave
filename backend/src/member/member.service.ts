@@ -8,10 +8,10 @@ import { Express } from 'express'; // For Multer typing
 
 type TeamMemberWithDetails = Prisma.TeamMemberGetPayload<{
   include: {
-    performanceMetrics: true;
-    growthForecasts: true;
-    materialHistories: { include: { material: { select: { name: true; color: true; fiber: true } } } };
-    assignedTasks: { include: { task: { include: { project: { select: { name: true } }; subtasks: true } } } };
+    performanceMetrics: true,
+    growthForecasts: true,
+    materialHistories: { include: { material: { select: { name: true; color: true; fiber: true } } } },
+    assignedTasks: { include: { task: { include: { project: { select: { name: true } }; subtasks: true } } } },
   };
 }>;
 
@@ -135,12 +135,22 @@ export class MemberService {
     });
 
     return members.map((member) => {
-      const sortedTasks = member.assignedTasks.sort((a, b) =>
-        new Date(b.task.startedAt).getTime() - new Date(a.task.startedAt).getTime()
-      );
+      const assignedTasks = member.assignedTasks;
 
-      const currentTask = sortedTasks[0]?.task || null;
-      const completedTasks = sortedTasks.slice(1).map(at => at.task);
+      const pendingTasks = assignedTasks
+        .filter(at => at.task.completedAt === null)
+        .sort((a, b) => {
+          const deadlineA = a.task.deadline ? a.task.deadline.getTime() : Infinity;
+          const deadlineB = b.task.deadline ? b.task.deadline.getTime() : Infinity;
+          return deadlineA - deadlineB;
+        });
+
+      const completedTasks = assignedTasks
+        .filter(at => at.task.completedAt !== null)
+        .sort((a, b) => b.task.completedAt.getTime() - a.task.completedAt.getTime());
+
+      const currentTask = pendingTasks[0]?.task || null;
+      const taskHistory = [...pendingTasks.slice(1), ...completedTasks].map(at => at.task);
 
       const progress = calculateAverage(member.performanceMetrics.map((pm) => pm.score));
 
@@ -158,7 +168,7 @@ export class MemberService {
         growthForecasts: member.growthForecasts,
         materialHistories: member.materialHistories,
         currentTask,
-        completedTasks,
+        taskHistory,
       };
     });
   }
@@ -195,12 +205,22 @@ export class MemberService {
 
     if (!member) return null;
 
-    const sortedTasks = member.assignedTasks.sort((a, b) =>
-      new Date(b.task.startedAt).getTime() - new Date(a.task.startedAt).getTime()
-    );
+    const assignedTasks = member.assignedTasks;
 
-    const currentTask = sortedTasks[0]?.task || null;
-    const completedTasks = sortedTasks.slice(1).map(at => at.task);
+    const pendingTasks = assignedTasks
+      .filter(at => at.task.completedAt === null)
+      .sort((a, b) => {
+        const deadlineA = a.task.deadline ? a.task.deadline.getTime() : Infinity;
+        const deadlineB = b.task.deadline ? b.task.deadline.getTime() : Infinity;
+        return deadlineA - deadlineB;
+      });
+
+    const completedTasks = assignedTasks
+      .filter(at => at.task.completedAt !== null)
+      .sort((a, b) => b.task.completedAt.getTime() - a.task.completedAt.getTime());
+
+    const currentTask = pendingTasks[0]?.task || null;
+    const taskHistory = [...pendingTasks.slice(1), ...completedTasks].map(at => at.task);
 
     const progress = calculateAverage(member.performanceMetrics.map((pm) => pm.score));
 
@@ -218,7 +238,7 @@ export class MemberService {
       growthForecasts: member.growthForecasts,
       materialHistories: member.materialHistories,
       currentTask,
-      completedTasks,
+      taskHistory,
     };
   }
 }

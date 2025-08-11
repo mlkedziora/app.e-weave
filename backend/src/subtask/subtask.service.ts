@@ -69,12 +69,31 @@ export class SubtaskService {
       throw new Error('Not authorized to update this subtask');
     }
 
-    return this.prisma.subtask.update({
+    const updatedSubtask = await this.prisma.subtask.update({
       where: { id },
       data: {
         completed: dto.completed,
         completedAt: dto.completed ? new Date() : null,
       },
     });
+
+    // Auto-complete task if all subtasks are completed
+    const allSubtasks = await this.prisma.subtask.findMany({
+      where: { taskId: subtask.taskId },
+    });
+
+    const completedCount = allSubtasks.filter(s => s.completed).length;
+    const total = allSubtasks.length;
+    const newProgress = total > 0 ? Math.round((completedCount / total) * 100) : subtask.task.progress;
+
+    await this.prisma.task.update({
+      where: { id: subtask.taskId },
+      data: {
+        progress: newProgress,
+        completedAt: completedCount === total ? new Date() : (dto.completed ? subtask.task.completedAt : null),
+      },
+    });
+
+    return updatedSubtask;
   }
 }

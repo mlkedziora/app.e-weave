@@ -48,7 +48,7 @@ export default function TeamList({
 
   return (
     <ScrollableContainer className="space-y-4">
-      <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-fill-color:#D7FAEA] [--progress-padding:0.155rem]">
+      <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-fill-color:#D7FAEA] [--progress-padding:0.155rem] mb-6 h-[calc(100%-1.5rem)]"> {/* Adjusted: only mb-6 (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) to your sweet spot; no mr- here; update the h calc accordingly (e.g., for mb-4 use h-[calc(100%-1rem)]) */}
         {/* CSS Variables Defined Here:
            --progress-bar-height: Sets outer (grey) bar height (default 0.5rem/8px, 'normal' size, matches h-2)
            --progress-fill-height: Sets inner (turquoise) bar height (default 0.25rem/4px, half of outer)

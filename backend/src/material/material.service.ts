@@ -126,8 +126,11 @@ export class MaterialService {
     });
   }
 
-  async findAllWithCategoryAndNotes() {
+  async findAllWithCategoryAndNotes(userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) throw new Error('Team member not found');
     const rawMaterials = await this.prisma.material.findMany({
+      where: { teamId: teamMember.teamId },
       include: { category: true, materialNotes: true },
     });
     return rawMaterials.map(material => ({
@@ -246,9 +249,39 @@ export class MaterialService {
     });
   }
 
-  async getCategories(teamId: string) {
+  async getCategories(userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) throw new Error('Team member not found');
     return this.prisma.materialCategory.findMany({
-      where: { teamId },
+      where: { teamId: teamMember.teamId },
     });
+  }
+
+  async createCategory(name: string, userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) throw new Error('Team member not found');
+    return this.prisma.materialCategory.create({
+      data: { name, teamId: teamMember.teamId },
+    });
+  }
+
+  async deleteCategory(id: string, userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) throw new Error('Team member not found');
+
+    const category = await this.prisma.materialCategory.findUnique({ where: { id } });
+    if (!category || category.teamId !== teamMember.teamId) throw new Error('Category not found or unauthorized');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.material.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null },
+      });
+      await tx.materialCategory.delete({
+        where: { id },
+      });
+    });
+
+    return { success: true };
   }
 }

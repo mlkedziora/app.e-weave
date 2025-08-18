@@ -39,19 +39,32 @@ export class MaterialController {
 
   @Get()
   findAll(@Req() req: Request) {
-    const teamId = req.user?.teamId;
-    if (!teamId) throw new Error('Unauthorized - No team ID');
-    return this.materialService.findAllWithCategoryAndNotes(teamId);
+    const userId = req.user?.id;
+    return this.materialService.findAllWithCategoryAndNotes(userId);
   }
 
   // Moved up: Specific route before dynamic :id
   @Get('categories') // New endpoint
   getCategories(@Req() req: Request) {
-    const teamId = req.user?.teamId;
-    console.log('[MaterialController] Fetching categories for teamId:', teamId); // Log teamId
-    const categories = this.materialService.getCategories(teamId);
+    const userId = req.user?.id;
+    console.log('[MaterialController] Fetching categories for userId:', userId); // Updated log
+    const categories = this.materialService.getCategories(userId);
     console.log('[MaterialController] Returning categories:', categories); // Log return value
     return categories;
+  }
+
+  @Post('categories')
+  createCategory(@Body() body: { name: string }, @Req() req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new Error('Unauthorized');
+    return this.materialService.createCategory(body.name, userId);
+  }
+
+  @Delete('categories/:id')
+  deleteCategory(@Param('id') id: string, @Req() req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new Error('Unauthorized');
+    return this.materialService.deleteCategory(id, userId);
   }
 
   @Get(':id')

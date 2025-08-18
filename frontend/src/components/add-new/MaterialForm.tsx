@@ -1,9 +1,13 @@
 // frontend/src/components/add-new/MaterialForm.tsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import StyledLink from '../common/StyledLink';
 
-export default function MaterialForm() {
+interface MaterialFormProps {
+  onSuccess: (newMaterial: Material) => void;
+  onCancel?: () => void;
+}
+
+export default function MaterialForm({ onSuccess, onCancel }: MaterialFormProps) {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -94,7 +98,7 @@ export default function MaterialForm() {
     }
 
     const formData = new FormData();
-    formData.append('category', selectedCategory);
+    formData.append('category', selectedCategory); // Name, as in DTO
     formData.append('name', name);
     formData.append('fiber', fiber);
     if (length) formData.append('length', parseFloat(length).toString());  // Ensure numeric string
@@ -119,9 +123,11 @@ export default function MaterialForm() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
+        const newMaterial = await res.json();
         console.log('Material created');
         resetForm();
         setError(null);
+        onSuccess(newMaterial);
       } else {
         const text = await res.text();
         setError(`Failed to create material: ${res.status} - ${text}`);
@@ -164,9 +170,16 @@ export default function MaterialForm() {
       <input value={pricePerMeter} onChange={(e) => setPricePerMeter(e.target.value)} placeholder="Price per Meter" type="number" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <input value={certifications} onChange={(e) => setCertifications(e.target.value)} placeholder="Known Certifications" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
       <textarea value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="Initial Notes" rows={3} className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black md:col-span-2" />
-      <button type="submit" className="col-span-full text-black hover:underline block text-center">
-        Save Material
-      </button>
+      <div className="col-span-full flex justify-center gap-4">
+        <StyledLink onClick={(e) => { e.preventDefault(); handleSubmit(e as any); }} className="text-black">
+          <Typography variant="15" className="text-black">SAVE MATERIAL</Typography>
+        </StyledLink>
+        {onCancel && (
+          <StyledLink onClick={onCancel} className="text-black">
+            <Typography variant="15" className="text-black">CANCEL</Typography>
+          </StyledLink>
+        )}
+      </div>
     </form>
   );
 }

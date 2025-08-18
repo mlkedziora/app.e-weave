@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import MaterialCategories from '../components/inventory/MaterialCategories'
 import MaterialDetail from '../components/inventory/MaterialDetail'
+import SplitPanelLayout from '@/components/common/SplitPanelLayout' // Import the new component
 
 export default function Inventory() {
   const [materials, setMaterials] = useState<any[] | null>(null)
@@ -92,18 +93,16 @@ export default function Inventory() {
   if (!materials) return <div className="h-full flex items-center justify-center p-4 text-black">Loading materials...</div>
   if (materials.length === 0) return <div className="h-full flex items-center justify-center p-4 text-black">No materials found.</div>
 
-
   return (
-    <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden"> {/* ✅ Add grid-rows-1 */}
-      <div className="col-span-1 h-full"> {/* ✅ Add h-full for explicitness/safety */}
+    <SplitPanelLayout
+      leftContent={
         <MaterialCategories
           materials={materials}
           onMaterialClick={handleMaterialClick}
         />
-      </div>
-
-      <div className="col-span-2 h-full"> {/* ✅ Add h-full for explicitness/safety */}
-        {loadingDetail ? (
+      }
+      rightContent={
+        loadingDetail ? (
           <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">
             Loading material details...
           </div>
@@ -113,8 +112,8 @@ export default function Inventory() {
           <div className="w-full bg-white p-6 rounded-lg shadow-md text-black h-full flex items-center justify-center">
             Select a material to view details
           </div>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   )
 }

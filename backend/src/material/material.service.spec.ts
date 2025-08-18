@@ -17,6 +17,7 @@ describe('MaterialService', () => {
       materialCategory: {
         upsert: jest.fn(),
         findMany: jest.fn(),
+        create: jest.fn(),
       } as any,
       material: {
         create: jest.fn(),
@@ -381,6 +382,20 @@ describe('MaterialService', () => {
       expect(result).toEqual(categories);
       expect(mockPrisma.materialCategory.findMany).toHaveBeenCalledWith({
         where: { teamId },
+      });
+    });
+  });
+
+  describe('createCategory', () => {
+    it('should create category', async () => {
+      const name = 'New Cat';
+      const teamId = 'team1';
+      mockPrisma.materialCategory.create.mockResolvedValue({ id: 'cat1', name, teamId });
+
+      const result = await service.createCategory(name, teamId);
+      expect(result).toEqual({ id: 'cat1', name, teamId });
+      expect(mockPrisma.materialCategory.create).toHaveBeenCalledWith({
+        data: { name, teamId },
       });
     });
   });

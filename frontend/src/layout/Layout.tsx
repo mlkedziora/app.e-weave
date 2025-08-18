@@ -7,7 +7,7 @@ export default function Layout({ children }: { children?: ReactNode }) {
   return (
     <>
       <div className="fixed inset-0 bg-[#ECECEC] z-[-1]" />
-      <div className="flex h-screen w-screen [--sidebar-width:20%] [--main-width:80%]">
+      <div className="flex h-screen w-screen [--sidebar-width:17%] [--main-width:83%]">
         <Sidebar />
         <div className="flex flex-col w-[var(--main-width)]">
           <Topbar />

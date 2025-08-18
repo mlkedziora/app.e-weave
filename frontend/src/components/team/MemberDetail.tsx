@@ -65,7 +65,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
   }, [member]);
 
   if (!member) {
-    return <EmptyPanel className="mb-6 mr-6 w-[calc(100%-1.5rem)] h-[calc(100%-1.5rem)]">Select a member to view performance.</EmptyPanel>; // Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values accordingly (e.g., for mr-4 use w-[calc(100%-1rem)], since 4 is 1rem)
+    return <EmptyPanel className="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]">Select a member to view performance.</EmptyPanel>; // Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values to account for margins + internal paddings (p-6 adds 1.5rem per side), e.g., for mr-4 (1rem) use w-[calc(100%-4rem)] since 1.5rem (pl) + 1.5rem (pr) + 1rem (mr) = 4rem
   }
 
   let task = currentTask;
@@ -260,7 +260,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
   const rightTasks = visibleHistoryTasks.slice(half);
 
   return (
-    <ScrollablePanel className="space-y-12" outerClassName="mb-6 mr-6 w-[calc(100%-1.5rem)] h-[calc(100%-1.5rem)]"> {/* Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values accordingly (e.g., for mr-4 use w-[calc(100%-1rem)], since 4 is 1rem) */}
+    <ScrollablePanel className="space-y-12" outerClassName="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]"> {/* Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values to account for margins + internal paddings (p-6 adds 1.5rem per side), e.g., for mr-4 (1rem) use w-[calc(100%-4rem)] since 1.5rem (pl) + 1.5rem (pr) + 1rem (mr) = 4rem */}
       {/* PROFILE HEADER */}
       <div>
         <UnderlinedHeader title="INDIVIDUAL PERFORMANCE" />

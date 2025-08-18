@@ -3,18 +3,18 @@ import ProjectsOverview from '../components/projects/ProjectsOverview'
 import ProjectDetail from '../components/projects/ProjectDetail'
 import ErrorBoundary from '../components/common/ErrorBoundary'
 import { useState } from 'react'
+import SplitPanelLayout from '@/components/common/SplitPanelLayout' // Import the new component
 
 export default function Projects() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
 
   return (
-    <div className="h-full grid grid-rows-1 grid-cols-3 gap-6 p-6 overflow-hidden text-black"> {/* Added text-black for consistency */}
-      <div className="col-span-1 h-full">
+    <SplitPanelLayout
+      leftContent={
         <ProjectsOverview onSelect={setSelectedProjectId} selectedId={selectedProjectId} />
-      </div>
-
-      <div className="col-span-2 h-full">
-        {selectedProjectId ? (
+      }
+      rightContent={
+        selectedProjectId ? (
           <ErrorBoundary>
             <ProjectDetail projectId={selectedProjectId} />
           </ErrorBoundary>
@@ -22,8 +22,8 @@ export default function Projects() {
           <div className="w-full bg-white p-6 rounded-lg shadow-md text-gray-500 h-full flex items-center justify-center">
             Select a project to view details
           </div>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   )
 }

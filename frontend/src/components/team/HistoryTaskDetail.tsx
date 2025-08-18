@@ -171,7 +171,7 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
   const displayedSubtasks = [...sortedPendingSubtasks, ...sortedCompletedSubtasks].slice(0, 10);
 
   return (
-    <BlurryOverlayPanel>
+    <BlurryOverlayPanel onClose={onClose}>
       <UnderlinedHeader title={task.name.toUpperCase()} />
       <div className="flex justify-between mb-6">
         <Typography variant="15" className="text-black">Task: {task.name}</Typography>

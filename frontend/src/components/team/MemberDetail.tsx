@@ -12,6 +12,7 @@ import ListContainer from '../common/ListContainer';
 import TwoColumnSubtasks from '../common/TwoColumnSubtasks';
 import { useAuth } from '@clerk/clerk-react';
 import HistoryTaskDetail from './HistoryTaskDetail';
+import HistoryListOverlay from './HistoryListOverlay';
 
 interface MemberDetailProps {
   member: {
@@ -50,7 +51,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
   const { getToken } = useAuth();
   const [currentTask, setCurrentTask] = useState(member.currentTask);
   const [taskHistory, setTaskHistory] = useState(member.taskHistory || []);
-  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
   useEffect(() => {
@@ -60,12 +61,12 @@ export default function MemberDetail({ member }: MemberDetailProps) {
     setShowAddSubtaskForm(false);
     setNewSubtaskName('');
     setSubtaskError(null);
-    setShowAllHistory(false);
+    setShowHistoryOverlay(false);
     setSelectedTask(null);
   }, [member]);
 
   if (!member) {
-    return <EmptyPanel className="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]">Select a member to view performance.</EmptyPanel>; // Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values to account for margins + internal paddings (p-6 adds 1.5rem per side), e.g., for mr-4 (1rem) use w-[calc(100%-4rem)] since 1.5rem (pl) + 1.5rem (pr) + 1rem (mr) = 4rem
+    return <EmptyPanel className="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]">Select a member to view performance.</EmptyPanel>;
   }
 
   let task = currentTask;
@@ -169,12 +170,10 @@ export default function MemberDetail({ member }: MemberDetailProps) {
         throw new Error('Failed to update subtask');
       }
 
-      // SPA logic for auto-complete and pick next task
       const allCompleted = updatedSubtasks.every(s => s.completed);
       if (allCompleted) {
         const completedCurrent = { ...updatedTask, completedAt: new Date().toISOString() };
 
-        // Find next most pressing pending task (earliest deadline)
         const pendingTasks = taskHistory.filter(t => !t.completedAt);
         pendingTasks.sort((a, b) => {
           const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
@@ -185,7 +184,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
         const nextTask = pendingTasks[0];
 
         let newHistory = taskHistory.filter(t => t.id !== (nextTask?.id || ''));
-        newHistory = [...newHistory, completedCurrent]; // Add completed to history
+        newHistory = [...newHistory, completedCurrent];
         newHistory.sort((a, b) => {
           if (!a.completedAt && !b.completedAt) {
             return (a.deadline ? new Date(a.deadline).getTime() : Infinity) - (b.deadline ? new Date(b.deadline).getTime() : Infinity);
@@ -208,7 +207,6 @@ export default function MemberDetail({ member }: MemberDetailProps) {
       }
     } catch (err) {
       console.error('Error updating subtask:', err);
-      // Revert
       setCurrentTask({ ...task, subtasks: task.subtasks });
     }
   };
@@ -239,7 +237,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
   const sortedCompletedSubtasks = [...(task.subtasks?.filter(s => s.completed) || [])].sort((a, b) => {
     const timeA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
     const timeB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-    return timeB - timeA; // Newest first
+    return timeB - timeA;
   });
 
   const displayedSubtasks = [...sortedPendingSubtasks, ...sortedCompletedSubtasks].slice(0, 10);
@@ -253,14 +251,22 @@ export default function MemberDetail({ member }: MemberDetailProps) {
     ...taskHistory.filter(t => t.completedAt).sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
   ];
 
-  const visibleHistoryTasks = showAllHistory ? sortedHistory : sortedHistory.slice(0, 10);
+  const visibleHistoryTasks = sortedHistory.slice(0, 10);
 
   const half = Math.ceil(visibleHistoryTasks.length / 2);
   const leftTasks = visibleHistoryTasks.slice(0, half);
   const rightTasks = visibleHistoryTasks.slice(half);
 
+  const handleTaskUpdate = (taskId: string, updated: any | null) => {
+    if (updated === null) {
+      setTaskHistory((prev) => prev.filter((t) => t.id !== taskId));
+    } else {
+      setTaskHistory((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+    }
+  };
+
   return (
-    <ScrollablePanel className="space-y-12" outerClassName="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]"> {/* Adjust 'mb-6' (bottom margin, e.g., mb-4 for smaller, mb-8 for larger) and 'mr-6' (right margin, e.g., mr-4 or mr-8) to your sweet spot; update the calc values to account for margins + internal paddings (p-6 adds 1.5rem per side), e.g., for mr-4 (1rem) use w-[calc(100%-4rem)] since 1.5rem (pl) + 1.5rem (pr) + 1rem (mr) = 4rem */}
+    <ScrollablePanel className="space-y-12" outerClassName="mb-6 mr-6 w-[calc(100%-4.5rem)] h-[calc(100%-4.5rem)]">
       {/* PROFILE HEADER */}
       <div>
         <UnderlinedHeader title="INDIVIDUAL PERFORMANCE" />
@@ -441,10 +447,8 @@ export default function MemberDetail({ member }: MemberDetailProps) {
             <Typography variant="15" className="text-black">ASSIGN TASK</Typography>
           </StyledLink>
           {taskHistory.length > 10 && (
-            <StyledLink onClick={() => setShowAllHistory(!showAllHistory)} className="text-black">
-              <Typography variant="15" className="text-black">
-                {showAllHistory ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
-              </Typography>
+            <StyledLink onClick={() => setShowHistoryOverlay(true)} className="text-black">
+              <Typography variant="15" className="text-black">EXPAND HISTORY</Typography>
             </StyledLink>
           )}
         </ActionButtonsRow>
@@ -472,10 +476,18 @@ export default function MemberDetail({ member }: MemberDetailProps) {
         />
       </div>
 
+      {showHistoryOverlay && (
+        <HistoryListOverlay 
+          taskHistory={taskHistory} 
+          onClose={() => setShowHistoryOverlay(false)} 
+          onSelectTask={setSelectedTask}
+        />
+      )}
       {selectedTask && (
         <HistoryTaskDetail 
           task={selectedTask} 
           onClose={() => setSelectedTask(null)} 
+          onUpdate={handleTaskUpdate}
         />
       )}
     </ScrollablePanel>

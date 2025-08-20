@@ -1,6 +1,5 @@
 // frontend/src/components/team/HistoryTaskDetail.tsx
-import React, { useState } from 'react';
-import ScrollablePanel from '../common/ScrollablePanel';
+import React, { useState, useEffect } from 'react';
 import Typography from '../common/Typography';
 import StyledLink from '../common/StyledLink';
 import ProgressDisplay from '../common/ProgressDisplay';
@@ -24,15 +23,30 @@ interface HistoryTaskDetailProps {
     completedAt?: string | null;
   };
   onClose: () => void;
+  onUpdate: (taskId: string, updated: any | null) => void;
 }
 
-export default function HistoryTaskDetail({ task: initialTask, onClose }: HistoryTaskDetailProps) {
+export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate }: HistoryTaskDetailProps) {
   const [showAllSubtasks, setShowAllSubtasks] = useState(false);
   const [showAddSubtaskForm, setShowAddSubtaskForm] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState('');
   const [subtaskError, setSubtaskError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const [task, setTask] = useState(initialTask);
+
+  // Custom style for this specific overlay to position it slightly lower and towards the left.
+  // Modify these values to adjust:
+  // - marginTop: Increase from '65px' to make it lower (e.g., '100px').
+  // - marginLeft: Use a negative value to shift left from center (e.g., '-10%' or '-100px').
+  // If you want the default position (centered with mt-65px), simply remove or comment out the innerStyle prop in the <BlurryOverlayPanel> call below.
+  const customInnerStyle = {
+    marginTop: '122px', // Slightly lower than default 65px
+    marginLeft: '-15%', // Shifted towards the left
+  };
+
+  useEffect(() => {
+    setTask(initialTask);
+  }, [initialTask]);
 
   const calculatedProgress = task.subtasks?.length > 0
     ? Math.round((task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100)
@@ -44,6 +58,10 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
       return;
     }
     setSubtaskError(null);
+    const oldTask = { ...task };
+    const updatedSubtasks = [...(task.subtasks || []), { id: 'temp', name: newSubtaskName, completed: false, completedAt: null }];
+    const updatedTask = { ...task, subtasks: updatedSubtasks };
+    setTask(updatedTask);
     try {
       const token = await getToken();
       const res = await fetch('/api/subtasks', {
@@ -59,17 +77,19 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
       });
       if (res.ok) {
         const newSub = await res.json();
-        setTask({
-          ...task,
-          subtasks: [...(task.subtasks || []), { id: newSub.id, name: newSubtaskName, completed: false, completedAt: null }],
-        });
+        const finalSubtasks = updatedSubtasks.map(s => s.id === 'temp' ? { ...s, id: newSub.id } : s);
+        const finalTask = { ...task, subtasks: finalSubtasks };
+        setTask(finalTask);
+        onUpdate(task.id, finalTask);
         setNewSubtaskName('');
         setShowAddSubtaskForm(false);
       } else {
+        setTask(oldTask);
         const errorBody = await res.json();
         setSubtaskError(`Failed to add subtask: ${errorBody.message || 'Unknown error'}`);
       }
     } catch (err) {
+      setTask(oldTask);
       console.error('Error adding subtask:', err);
       setSubtaskError('Error adding subtask, possibly due to network issues.');
     }
@@ -77,6 +97,10 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
 
   const handleDeleteSubtask = async (subtaskId: string) => {
     if (!confirm('Are you sure you want to delete this subtask?')) return;
+    const oldTask = { ...task };
+    const updatedSubtasks = task.subtasks?.filter(s => s.id !== subtaskId) || [];
+    const updatedTask = { ...task, subtasks: updatedSubtasks, progress: updatedSubtasks.length > 0 ? Math.round((updatedSubtasks.filter(s => s.completed).length / updatedSubtasks.length) * 100) : 0 };
+    setTask(updatedTask);
     try {
       const token = await getToken();
       const res = await fetch(`/api/subtasks/${subtaskId}`, {
@@ -86,14 +110,13 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
         },
       });
       if (res.ok) {
-        setTask({
-          ...task,
-          subtasks: task.subtasks?.filter(s => s.id !== subtaskId) || [],
-        });
+        onUpdate(task.id, updatedTask);
       } else {
+        setTask(oldTask);
         alert('Failed to delete subtask.');
       }
     } catch (err) {
+      setTask(oldTask);
       console.error('Error deleting subtask:', err);
       alert('Error deleting subtask.');
     }
@@ -103,6 +126,7 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
     const subtask = task.subtasks?.find(s => s.id === subtaskId);
     if (!subtask) return;
 
+    const oldTask = { ...task };
     const newCompleted = !subtask.completed;
     const newCompletedAt = newCompleted ? new Date().toISOString() : null;
 
@@ -127,15 +151,16 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
         throw new Error('Failed to update subtask');
       }
 
-      // SPA logic for auto-complete (but since this is history detail, perhaps no promotion needed here)
       const allCompleted = updatedSubtasks.every(s => s.completed);
-      if (allCompleted) {
-        setTask({ ...updatedTask, completedAt: new Date().toISOString() });
+      let finalTask = updatedTask;
+      if (allCompleted && !task.completedAt) {
+        finalTask = { ...updatedTask, completedAt: new Date().toISOString() };
+        setTask(finalTask);
       }
+      onUpdate(task.id, finalTask);
     } catch (err) {
+      setTask(oldTask);
       console.error('Error updating subtask:', err);
-      // Revert
-      setTask({ ...task, subtasks: task.subtasks });
     }
   };
 
@@ -150,6 +175,7 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
         },
       });
       if (res.ok) {
+        onUpdate(task.id, null);
         onClose();
       } else {
         alert('Failed to delete task.');
@@ -171,7 +197,7 @@ export default function HistoryTaskDetail({ task: initialTask, onClose }: Histor
   const displayedSubtasks = [...sortedPendingSubtasks, ...sortedCompletedSubtasks].slice(0, 10);
 
   return (
-    <BlurryOverlayPanel onClose={onClose}>
+    <BlurryOverlayPanel innerStyle={customInnerStyle} onClose={onClose}>
       <UnderlinedHeader title={task.name.toUpperCase()} />
       <div className="flex justify-between mb-6">
         <Typography variant="15" className="text-black">Task: {task.name}</Typography>

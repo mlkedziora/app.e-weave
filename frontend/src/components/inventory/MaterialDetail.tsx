@@ -1,6 +1,6 @@
 // frontend/src/components/inventory/MaterialDetail.tsx
 import React, { useState, useEffect } from 'react'
-import MaterialHistoryFull from './MaterialHistoryFull'
+import TrackQuantityHistory from './TrackQuantityHistory'
 import UpdateQuantityModal from './UpdateQuantityModal'
 import AdditionalMetrics from './AdditionalMetrics'
 import EditNoteModal from './EditNoteModal'
@@ -12,6 +12,9 @@ import ScrollablePanel from '../common/ScrollablePanel' // ✅ Use for panel + s
 import EmptyPanel from '../common/EmptyPanel' // ✅ Use for no-material state
 import Typography from '../common/Typography'
 import StyledLink from '../common/StyledLink'
+import UnderlinedHeader from '../common/UnderlinedHeader'
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel'
+import ActionButtonsRow from '../common/ActionButtonsRow'
 
 interface HistoryEntry {
   teamMember?: { name: string };
@@ -73,43 +76,45 @@ const ProjectTasksView = ({ project, onClose }: { project: any; onClose: () => v
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md w-96 max-h-96 overflow-y-auto">
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">Tasks for {project.name}</Typography>
-        <div className="space-y-4">
-          {tasks.map((task) => (
-            <div key={task.id} className="border p-4 rounded bg-gray-50 space-y-2">
-              <StyledLink onClick={() => toggleSubtasks(task.id)} className="text-black">
-                {task.name}
-              </StyledLink>
-              <Typography variant="13" className="text-black">
-                Assigned to: {task.assignees?.map((a: any) => a.teamMember.name).join(', ') || 'Unassigned'}
-              </Typography>
-              <Typography variant="13" className="text-black">
-                Start: {task.startedAt ? new Date(task.startedAt).toLocaleDateString() : 'N/A'}
-              </Typography>
-              <Typography variant="13" className="text-black">
-                Deadline: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'N/A'}
-              </Typography>
-              {expandedTaskId === task.id && (
-                <div className="mt-2 space-y-2">
-                  <Typography variant="13" weight="light" className="text-black">Top 5 Subtasks:</Typography>
-                  {task.subtasks
-                    ?.sort((a: any, b: any) => a.completed - b.completed || a.name.localeCompare(b.name))
-                    .slice(0, 5)
-                    .map((sub: any, idx: number) => (
-                      <Typography key={idx} variant="13" className="text-black">
-                        {sub.name} {sub.completed ? '(Completed)' : ''}
-                      </Typography>
-                    )) || <Typography variant="13" className="text-black italic">No subtasks</Typography>}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <StyledLink onClick={onClose} className="mt-4 text-black block">Close</StyledLink>
+    <BlurryOverlayPanel onClose={onClose}>
+      <UnderlinedHeader title={project.name.toUpperCase()} />
+      <div className="space-y-4">
+        {tasks.map((task) => (
+          <div key={task.id} className="border p-4 rounded bg-gray-50 space-y-2">
+            <StyledLink onClick={() => toggleSubtasks(task.id)} className="text-black">
+              {task.name}
+            </StyledLink>
+            <Typography variant="13" className="text-black">
+              Assigned to: {task.assignees?.map((a: any) => a.teamMember.name).join(', ') || 'Unassigned'}
+            </Typography>
+            <Typography variant="13" className="text-black">
+              Start: {task.startedAt ? new Date(task.startedAt).toLocaleDateString() : 'N/A'}
+            </Typography>
+            <Typography variant="13" className="text-black">
+              Deadline: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'N/A'}
+            </Typography>
+            {expandedTaskId === task.id && (
+              <div className="mt-2 space-y-2">
+                <Typography variant="13" weight="light" className="text-black">Top 5 Subtasks:</Typography>
+                {task.subtasks
+                  ?.sort((a: any, b: any) => a.completed - b.completed || a.name.localeCompare(b.name))
+                  .slice(0, 5)
+                  .map((sub: any, idx: number) => (
+                    <Typography key={idx} variant="13" className="text-black">
+                      {sub.name} {sub.completed ? '(Completed)' : ''}
+                    </Typography>
+                  )) || <Typography variant="13" className="text-black italic">No subtasks</Typography>}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
-    </div>
+      <div className="flex justify-center mt-6">
+        <StyledLink onClick={onClose} className="text-black">
+          <Typography variant="15" className="text-black">QUIT</Typography>
+        </StyledLink>
+      </div>
+    </BlurryOverlayPanel>
   )
 }
 
@@ -123,6 +128,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [selectedProject, setSelectedProject] = useState<any | null>(null)
+  const [showAllAssigned, setShowAllAssigned] = useState(false)
 
   const { user: currentUser } = useUser()
   const { getToken } = useAuth()
@@ -135,11 +141,20 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
     return <EmptyPanel>Select a material to view details.</EmptyPanel> // ✅ Use reusable
   }
 
+  const assignedProjects = material.assignedTo?.map(pm => pm.project) || [];
+  const sortedAssignedProjects = assignedProjects.sort((a, b) => a.name.localeCompare(b.name));
+  const visibleProjects = showAllAssigned ? sortedAssignedProjects : sortedAssignedProjects.slice(0, 10);
+  const half = Math.ceil(visibleProjects.length / 2);
+  const leftProjects = visibleProjects.slice(0, half);
+  const rightProjects = visibleProjects.slice(half);
+
+  const tablePadding = 'p-2.5'
+
   return (
     <ScrollablePanel className="space-y-12"> {/* ✅ Increased spacing for airiness */}
       {/* FABRIC DETAILS */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">FABRIC DETAILS</Typography>
+        <UnderlinedHeader title="FABRIC DETAILS" />
         <div className="flex gap-8"> {/* ✅ Increased gap for airiness */}
           <img
             src="/fabric.jpg"
@@ -160,59 +175,109 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* ASSIGNED PROJECTS */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-2 text-black">ASSIGNED PROJECTS</Typography>
-        <div className="space-y-4">
-          {material.assignedTo?.map((pm: any, i: number) => (
-            <StyledLink key={i} onClick={() => setSelectedProject(pm.project)} className="text-black block">
-              {pm.project?.name || 'N/A'}
-            </StyledLink>
-          )) || <Typography variant="13" className="text-black italic">No assigned projects.</Typography>}
-        </div>
-        <StyledLink onClick={() => {}} className="mt-4 text-black block">Add Projects</StyledLink> {/* Placeholder for add functionality */}
+        <UnderlinedHeader title="ASSIGNED PROJECTS" />
+        {assignedProjects.length > 0 ? (
+          <div className="flex gap-4 mb-6">
+            <div className="flex flex-col space-y-4 flex-1">
+              {leftProjects.map((proj) => (
+                <div 
+                  key={proj.id} 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => setSelectedProject(proj)}
+                >
+                  <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                    {/* No completion status for projects, so empty */}
+                  </div>
+                  <div>
+                    <Typography variant="15" className="text-black">{proj.name}</Typography>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col space-y-4 flex-1">
+              {rightProjects.map((proj) => (
+                <div 
+                  key={proj.id} 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => setSelectedProject(proj)}
+                >
+                  <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                    {/* No completion status for projects, so empty */}
+                  </div>
+                  <div>
+                    <Typography variant="15" className="text-black">{proj.name}</Typography>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <Typography variant="13" className="text-black italic mb-6">No assigned projects.</Typography>
+        )}
+        <ActionButtonsRow>
+          <StyledLink onClick={() => {}} className="text-black">
+            <Typography variant="15" className="text-black">ADD PROJECT</Typography>
+          </StyledLink>
+          <StyledLink onClick={() => setShowAllAssigned(!showAllAssigned)} className="text-black">
+            <Typography variant="15" className="text-black">
+              {showAllAssigned ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
+            </Typography>
+          </StyledLink>
+        </ActionButtonsRow>
       </div>
 
-      {/* QUANTITY TRACKING */}
+      {/* TRACK QUANTITY */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] mb-4 text-black">TRACK QUANTITY</Typography>
-        <div className="space-y-4">
+        <UnderlinedHeader title="TRACK QUANTITY" />
+        <div className="border border-black rounded-lg overflow-hidden mb-6">
           {Array.isArray(material.history) && material.history.length > 0 ? (
-            material.history.slice(0, 6).map((entry: any) => ( // Removed i param, use entry.id for key
-              <div key={entry.id} className="border p-4 rounded bg-gray-50 space-y-2"> {/* Changed key to entry.id */}
-                <Typography variant="15" className="text-black">User Taking: {entry.teamMember?.name || 'Unknown'}</Typography>
-                <Typography variant="15" className="text-black">Project: {entry.task?.project?.name || 'N/A'}</Typography>
-                <Typography variant="15" className="text-black">Task: {entry.task?.name || 'N/A'}</Typography>
-                <Typography variant="15" className="text-black">Previous Amount: {entry.previousLength} m</Typography>
-                <Typography variant="15" className="text-black">New Amount: {entry.newLength} m</Typography>
-                <Typography variant="15" className="text-black">Timestamp: {new Date(entry.changedAt).toLocaleString()}</Typography>
-              </div>
-            ))
+            <table className="w-full border-collapse bg-white">
+              <thead>
+                <tr>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>USER</th>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>PROJECT</th>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>TASK</th>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>PREVIOUS</th>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>NEW</th>
+                  <th className={`${tablePadding} text-center border-b border-r last:border-r-0 text-black font-normal`}>TIMESTAMP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {material.history.slice(0, 6).map((entry: any) => (
+                  <tr key={entry.id}>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{entry.teamMember?.name || 'Unknown'}</td>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{entry.task?.project?.name || 'N/A'}</td>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{entry.task?.name || 'N/A'}</td>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{entry.previousLength} m</td>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{entry.newLength} m</td>
+                    <td className={`${tablePadding} text-center border-t border-r last:border-r-0 text-black font-normal`}>{new Date(entry.changedAt).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           ) : (
-            <Typography variant="13" className="text-black italic">No quantity history available.</Typography>
+            <div className={`${tablePadding} bg-white text-center`}>
+              <Typography variant="13" className="text-black italic">No quantity history available.</Typography>
+            </div>
           )}
         </div>
-        <StyledLink
-          onClick={() => setShowUpdateModal(true)}
-          className="mt-4 text-black block"
-        >
-          Update Quantity
-        </StyledLink>
-        <StyledLink
-          onClick={() => setShowAddQuantityModal(true)}
-          className="mt-4 text-black block"
-        >
-          Add Quantity
-        </StyledLink>
-        <StyledLink
-          onClick={() => setShowFullHistory(true)}
-          className="mt-4 ml-0 text-black block" 
-        >
-          Expand History
-        </StyledLink>
+        <ActionButtonsRow>
+          <StyledLink onClick={() => setShowUpdateModal(true)} className="text-black">
+            <Typography variant="15" className="text-black">UPDATE QUANTITY</Typography>
+          </StyledLink>
+          <StyledLink onClick={() => setShowAddQuantityModal(true)} className="text-black">
+            <Typography variant="15" className="text-black">ADD QUANTITY</Typography>
+          </StyledLink>
+          <StyledLink onClick={() => setShowFullHistory(true)} className="text-black">
+            <Typography variant="15" className="text-black">EXPAND HISTORY</Typography>
+          </StyledLink>
+        </ActionButtonsRow>
 
         {showFullHistory && (
-          <MaterialHistoryFull
+          <TrackQuantityHistory
             material={material}
             onClose={() => setShowFullHistory(false)}
+            onRefresh={onRefresh}
           />
         )}
 
@@ -243,7 +308,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* ENVIRONMENTAL IMPACT */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">ENVIRONMENTAL IMPACT</Typography>
+        <UnderlinedHeader title="ENVIRONMENTAL IMPACT" />
         <Typography variant="13" className="text-black mb-4">Prototype – Based on PEFCR Guidelines</Typography>
         <div className="grid grid-cols-2 gap-6"> {/* ✅ Increased gap */}
           <Typography variant="15" className="text-black">CO₂ eq (kg): {material.climateChange}</Typography>
@@ -262,7 +327,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* TRANSPORT */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">TRANSPORT</Typography>
+        <UnderlinedHeader title="TRANSPORT" />
         <Typography variant="13" className="text-black mb-2">Prototype – Based on User Input</Typography>
         <img
           src="/map.png"
@@ -276,7 +341,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {/* RECENT NOTES */}
       <div>
-        <Typography variant="20" weight="light" element="h2" className="tracking-[3px] text-black">RECENT NOTES</Typography>
+        <UnderlinedHeader title="RECENT NOTES" />
         <Typography variant="13" className="text-black mb-4">Quantity Available: {material.length} m</Typography>
         <div className="space-y-4"> {/* ✅ Increased spacing */}
           {material.materialNotes?.slice(0, 3).map((note: any, i: number) => (

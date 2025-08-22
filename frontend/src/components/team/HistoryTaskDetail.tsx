@@ -1,5 +1,5 @@
 // frontend/src/components/team/HistoryTaskDetail.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Typography from '../common/Typography';
 import StyledLink from '../common/StyledLink';
 import ProgressDisplay from '../common/ProgressDisplay';
@@ -29,39 +29,71 @@ interface HistoryTaskDetailProps {
 export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate }: HistoryTaskDetailProps) {
   const [showAllSubtasks, setShowAllSubtasks] = useState(false);
   const [showAddSubtaskForm, setShowAddSubtaskForm] = useState(false);
-  const [newSubtaskName, setNewSubtaskName] = useState('');
+  const [newSubtaskNames, setNewSubtaskNames] = useState<string[]>([]);
   const [subtaskError, setSubtaskError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const [task, setTask] = useState(initialTask);
+  const textareaRefs = useRef<HTMLTextAreaElement[]>([]);
 
-  // Custom style for this specific overlay to position it slightly lower and towards the left.
-  // Modify these values to adjust:
-  // - marginTop: Increase from '65px' to make it lower (e.g., '100px').
-  // - marginLeft: Use a negative value to shift left from center (e.g., '-10%' or '-100px').
-  // If you want the default position (centered with mt-65px), simply remove or comment out the innerStyle prop in the <BlurryOverlayPanel> call below.
   const customInnerStyle = {
-    marginTop: '122px', // Slightly lower than default 65px
-    marginLeft: '-15%', // Shifted towards the left
+    marginTop: '0px',
+    marginLeft: '0',
   };
 
   useEffect(() => {
     setTask(initialTask);
   }, [initialTask]);
 
+  useEffect(() => {
+    textareaRefs.current.forEach((ta) => {
+      if (ta) {
+        ta.style.height = 'auto';
+        ta.style.height = `${ta.scrollHeight}px`;
+      }
+    });
+  }, [newSubtaskNames]);
+
+  useEffect(() => {
+    const lastIndex = newSubtaskNames.length - 1;
+    if (lastIndex >= 0) {
+      const last = textareaRefs.current[lastIndex];
+      if (last) {
+        last.focus();
+      }
+    }
+  }, [newSubtaskNames.length]);
+
+  useEffect(() => {
+    if (newSubtaskNames.length === 0 && showAddSubtaskForm) {
+      setShowAddSubtaskForm(false);
+    }
+  }, [newSubtaskNames, showAddSubtaskForm]);
+
   const calculatedProgress = task.subtasks?.length > 0
     ? Math.round((task.subtasks.filter(s => s.completed).length / task.subtasks.length) * 100)
     : 0;
 
-  const handleAddSubtask = async () => {
-    if (!newSubtaskName.trim()) {
+  const addNewLine = () => {
+    setNewSubtaskNames((prev) => [...prev, '']);
+  };
+
+  const handleAdd = async (index: number) => {
+    const name = newSubtaskNames[index].trim();
+    if (!name) {
       setSubtaskError('Enter a subtask description.');
       return;
     }
     setSubtaskError(null);
-    const oldTask = { ...task };
-    const updatedSubtasks = [...(task.subtasks || []), { id: 'temp', name: newSubtaskName, completed: false, completedAt: null }];
-    const updatedTask = { ...task, subtasks: updatedSubtasks };
-    setTask(updatedTask);
+    const tempId = `temp-${Date.now()}-${index}`;
+    setTask((prevTask) => {
+      const updatedSubtasks = [...(prevTask.subtasks || []), { id: tempId, name, completed: false, completedAt: null }];
+      return { ...prevTask, subtasks: updatedSubtasks };
+    });
+    setNewSubtaskNames((prev) => {
+      const newPrev = [...prev];
+      newPrev.splice(index, 1);
+      return newPrev;
+    });
     try {
       const token = await getToken();
       const res = await fetch('/api/subtasks', {
@@ -72,27 +104,113 @@ export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate
         },
         body: JSON.stringify({
           taskId: task.id,
-          name: newSubtaskName,
+          name,
         }),
       });
       if (res.ok) {
         const newSub = await res.json();
-        const finalSubtasks = updatedSubtasks.map(s => s.id === 'temp' ? { ...s, id: newSub.id } : s);
-        const finalTask = { ...task, subtasks: finalSubtasks };
-        setTask(finalTask);
-        onUpdate(task.id, finalTask);
-        setNewSubtaskName('');
-        setShowAddSubtaskForm(false);
+        setTask((prevTask) => {
+          const finalSubtasks = prevTask.subtasks?.map((s) =>
+            s.id === tempId ? { ...s, id: newSub.id } : s
+          ) || [];
+          const finalTask = { ...prevTask, subtasks: finalSubtasks };
+          onUpdate(task.id, finalTask);
+          return finalTask;
+        });
       } else {
-        setTask(oldTask);
+        setTask((prevTask) => ({
+          ...prevTask,
+          subtasks: prevTask.subtasks?.filter((s) => s.id !== tempId) || [],
+        }));
         const errorBody = await res.json();
         setSubtaskError(`Failed to add subtask: ${errorBody.message || 'Unknown error'}`);
       }
     } catch (err) {
-      setTask(oldTask);
+      setTask((prevTask) => ({
+        ...prevTask,
+        subtasks: prevTask.subtasks?.filter((s) => s.id !== tempId) || [],
+      }));
       console.error('Error adding subtask:', err);
       setSubtaskError('Error adding subtask, possibly due to network issues.');
     }
+  };
+
+  const handleAddAll = async () => {
+    const namesToAdd = newSubtaskNames.filter((n) => n.trim());
+    if (namesToAdd.length === 0) {
+      setSubtaskError('No subtasks to add.');
+      return;
+    }
+    setSubtaskError(null);
+    const tempIds = namesToAdd.map((_, i) => `temp-all-${Date.now()}-${i}`);
+    const oldTask = { ...task };
+    setTask((prevTask) => {
+      const newSubs = namesToAdd.map((name, i) => ({
+        id: tempIds[i],
+        name,
+        completed: false,
+        completedAt: null,
+      }));
+      const updatedSubtasks = [...(prevTask.subtasks || []), ...newSubs];
+      return { ...prevTask, subtasks: updatedSubtasks };
+    });
+    setNewSubtaskNames([]);
+    try {
+      const token = await getToken();
+      let hasError = false;
+      for (let i = 0; i < namesToAdd.length; i++) {
+        const res = await fetch('/api/subtasks', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            taskId: task.id,
+            name: namesToAdd[i],
+          }),
+        });
+        if (res.ok) {
+          const newSub = await res.json();
+          setTask((prevTask) => {
+            const finalSubtasks = prevTask.subtasks?.map((s) =>
+              s.id === tempIds[i] ? { ...s, id: newSub.id } : s
+            ) || [];
+            return { ...prevTask, subtasks: finalSubtasks };
+          });
+        } else {
+          hasError = true;
+          const errorBody = await res.json();
+          setSubtaskError(`Failed to add some subtasks: ${errorBody.message || 'Unknown error'}`);
+          // Remove the failed one
+          setTask((prevTask) => ({
+            ...prevTask,
+            subtasks: prevTask.subtasks?.filter((s) => s.id !== tempIds[i]) || [],
+          }));
+        }
+      }
+      if (!hasError) {
+        onUpdate(task.id, task);
+      } else {
+        onUpdate(task.id, oldTask); // Or partial update
+      }
+    } catch (err) {
+      setTask(oldTask);
+      console.error('Error adding subtasks:', err);
+      setSubtaskError('Error adding subtasks, possibly due to network issues.');
+    }
+  };
+
+  const handleCancel = (index: number) => {
+    setNewSubtaskNames((prev) => {
+      const newPrev = [...prev];
+      newPrev.splice(index, 1);
+      return newPrev;
+    });
+  };
+
+  const handleCancelAll = () => {
+    setNewSubtaskNames([]);
   };
 
   const handleDeleteSubtask = async (subtaskId: string) => {
@@ -197,7 +315,7 @@ export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate
   const displayedSubtasks = [...sortedPendingSubtasks, ...sortedCompletedSubtasks].slice(0, 10);
 
   return (
-    <BlurryOverlayPanel innerStyle={customInnerStyle} onClose={onClose}>
+    <BlurryOverlayPanel draggable={true} innerStyle={customInnerStyle} onClose={onClose}>
       <UnderlinedHeader title={task.name.toUpperCase()} />
       <div className="flex justify-between mb-6">
         <Typography variant="15" className="text-black">Task: {task.name}</Typography>
@@ -263,7 +381,15 @@ export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate
         </div>
       )}
       <ActionButtonsRow>
-        <StyledLink onClick={() => setShowAddSubtaskForm(true)} className="text-black">
+        <StyledLink
+          onClick={() => {
+            setShowAddSubtaskForm(true);
+            if (newSubtaskNames.length === 0) {
+              setNewSubtaskNames(['']);
+            }
+          }}
+          className="text-black"
+        >
           <Typography variant="15" className="text-black">ADD SUBTASK</Typography>
         </StyledLink>
         <StyledLink onClick={() => setShowAllSubtasks(!showAllSubtasks)} className="text-black">
@@ -273,27 +399,52 @@ export default function HistoryTaskDetail({ task: initialTask, onClose, onUpdate
         </StyledLink>
       </ActionButtonsRow>
       {showAddSubtaskForm && (
-        <div className="mt-4 p-4 border rounded bg-gray-50">
-          <Typography variant="15" className="text-black mb-2">Add Subtask</Typography>
-          <input
-            type="text"
-            value={newSubtaskName}
-            onChange={(e) => setNewSubtaskName(e.target.value)}
-            placeholder="Subtask description"
-            className="border p-2 w-full mb-2"
-          />
-          {subtaskError && <Typography variant="13" className="text-red-500 mb-2">{subtaskError}</Typography>}
-          <div className="flex gap-2">
-            <button className="bg-black text-white px-4 py-2 rounded" onClick={handleAddSubtask}>
-              Add
-            </button>
-            <button
-              className="bg-gray-200 px-4 py-2 rounded"
-              onClick={() => setShowAddSubtaskForm(false)}
-            >
-              Cancel
-            </button>
+        <div className="mt-6">
+          <UnderlinedHeader title="NEW SUBTASKS" />
+          <div className="space-y-4 mb-6">
+            {newSubtaskNames.map((name, index) => (
+              <div key={index} className="relative flex items-start">
+                <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0"></div>
+                <textarea
+                  ref={(el) => (textareaRefs.current[index] = el)}
+                  value={name}
+                  onChange={(e) => {
+                    const newNames = [...newSubtaskNames];
+                    newNames[index] = e.target.value;
+                    setNewSubtaskNames(newNames);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      addNewLine();
+                    }
+                  }}
+                  className="flex-1 bg-transparent border-none focus:outline-none resize-none overflow-hidden text-black text-[13px]"
+                  placeholder="Subtask description"
+                  rows={1}
+                />
+                <div className="absolute top-0 right-0 flex gap-4">
+                  <StyledLink onClick={() => handleAdd(index)} className="text-black">
+                    <Typography variant="15" className="text-black">ADD</Typography>
+                  </StyledLink>
+                  <StyledLink onClick={() => handleCancel(index)} className="text-black">
+                    <Typography variant="15" className="text-black">CANCEL</Typography>
+                  </StyledLink>
+                </div>
+              </div>
+            ))}
           </div>
+          {newSubtaskNames.length > 1 && (
+            <div className="flex justify-between mb-6">
+              <StyledLink onClick={handleAddAll} className="text-black">
+                <Typography variant="15" className="text-black">ADD ALL</Typography>
+              </StyledLink>
+              <StyledLink onClick={handleCancelAll} className="text-black">
+                <Typography variant="15" className="text-black">CANCEL ALL</Typography>
+              </StyledLink>
+            </div>
+          )}
+          {subtaskError && <Typography variant="13" className="text-red-500 mb-2">{subtaskError}</Typography>}
         </div>
       )}
       <div className="flex justify-center mt-6">

@@ -152,10 +152,16 @@ export class MaterialService {
               },
             }, // For "Task" name
           },
+          orderBy: {
+            changedAt: 'desc',
+          },
         },
         materialNotes: {
           include: {
             teamMember: { select: { name: true, userId: true } }, // For note author + edit auth
+          },
+          orderBy: {
+            createdAt: 'desc',
           },
         },
         assignedTo: { // Bonus: For "ASSIGNED PROJECTS" if needed deeper
@@ -165,10 +171,15 @@ export class MaterialService {
     });
   }
 
-  async createHistoryEntry(materialId: string, userId: string, dto: CreateMaterialHistoryDto & { taskId?: string }) {
+  async createHistoryEntry(materialId: string, currentUserId: string, dto: CreateMaterialHistoryDto) {
     return this.prisma.$transaction(async (tx) => {
-      const teamMember = await tx.teamMember.findFirst({ where: { userId } });
-      if (!teamMember) throw new Error('Team member not found');
+      const currentTeamMember = await tx.teamMember.findFirst({ where: { userId: currentUserId } });
+      if (!currentTeamMember) throw new Error('Current team member not found');
+
+      const selectedTeamMember = await tx.teamMember.findUnique({ where: { id: dto.teamMemberId } });
+      if (!selectedTeamMember || selectedTeamMember.teamId !== currentTeamMember.teamId) {
+        throw new Error('Invalid selected team member');
+      }
 
       const material = await tx.material.findUnique({ where: { id: materialId } });
       if (!material) throw new Error('Material not found');
@@ -177,7 +188,7 @@ export class MaterialService {
       const history = await tx.materialHistory.create({
         data: {
           materialId,
-          teamMemberId: teamMember.id,
+          teamMemberId: selectedTeamMember.id,
           previousLength: dto.previousLength,
           newLength: dto.newLength,
           taskId: dto.taskId,  // Add this; undefined -> null if not provided
@@ -202,7 +213,7 @@ export class MaterialService {
             taskId: dto.taskId,
             materialId,
             amountUsed,
-            teamMemberId: teamMember.id,  // Add this
+            teamMemberId: selectedTeamMember.id,
           },
         });
       }

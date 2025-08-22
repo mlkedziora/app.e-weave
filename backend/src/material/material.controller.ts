@@ -85,7 +85,7 @@ export class MaterialController {
   @Post(':id/history')
   createHistoryEntry(
     @Param('id') materialId: string,
-    @Body() dto: CreateMaterialHistoryDto & { taskId?: string },  // Extended with optional taskId
+    @Body() dto: CreateMaterialHistoryDto,
     @Req() req: Request
   ) {
     const userId = req.user?.id;

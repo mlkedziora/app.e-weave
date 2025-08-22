@@ -265,13 +265,15 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           <StyledLink onClick={() => setShowUpdateModal(true)} className="text-black">
             <Typography variant="15" className="text-black">UPDATE QUANTITY</Typography>
           </StyledLink>
-          <StyledLink onClick={() => setShowAddQuantityModal(true)} className="text-black">
-            <Typography variant="15" className="text-black">ADD QUANTITY</Typography>
-          </StyledLink>
           <StyledLink onClick={() => setShowFullHistory(true)} className="text-black">
             <Typography variant="15" className="text-black">EXPAND HISTORY</Typography>
           </StyledLink>
         </ActionButtonsRow>
+        <div className="flex justify-center mt-4">
+          <StyledLink onClick={() => setShowAddQuantityModal(true)} className="text-black">
+            <Typography variant="15" className="text-black">ADD QUANTITY</Typography>
+          </StyledLink>
+        </div>
 
         {showFullHistory && (
           <TrackQuantityHistory

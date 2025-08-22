@@ -1,10 +1,13 @@
 // frontend/src/components/add-new/ProjectForm.tsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import StyledLink from '../common/StyledLink';
+import Typography from '../common/Typography';
+import SmartInput from '../common/SmartInput';
+import MaterialSelector from './MaterialSelector';
+import UnderlinedHeader from '../common/UnderlinedHeader';
 
 interface Member { id: string; name: string; }
-interface Material { id: string; name: string; }
+interface Material { id: string; name: string; category: string; }
 interface Task { name: string; startDate?: string; deadline?: string; subtasks: string[]; assigneeId?: string; }
 
 export default function ProjectForm() {
@@ -24,19 +27,18 @@ export default function ProjectForm() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getToken({ template: 'backend-access' }).then(async (t) => { // Use correct token template
+    getToken({ template: 'backend-access' }).then(async (t) => {
       setToken(t);
       try {
         const [membersRes, materialsRes] = await Promise.all([
-          fetch('/api/members', { headers: { Authorization: `Bearer ${t}` } }), // Added /api
-          fetch('/api/materials', { headers: { Authorization: `Bearer ${t}` } }), // Added /api
+          fetch('/api/members', { headers: { Authorization: `Bearer ${t}` } }),
+          fetch('/api/materials', { headers: { Authorization: `Bearer ${t}` } }),
         ]);
         if (!membersRes.ok) throw new Error('Failed to fetch members');
         if (!materialsRes.ok) throw new Error('Failed to fetch materials');
         setMembers(await membersRes.json());
         setMaterials(await materialsRes.json());
       } catch (err) {
-        console.error('Error loading members or materials:', err);
         setError('Failed to load members or materials');
       }
     });
@@ -100,69 +102,70 @@ export default function ProjectForm() {
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch('/api/projects', { // Added /api
+      const res = await fetch('/api/projects', {
         method: 'POST',
         body: formData,
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        console.log('Project created');
         resetForm();
         setError(null);
       } else {
-        const text = await res.text();
-        setError(`Failed to create project: ${text}`);
+        setError('Failed to create project');
       }
     } catch (err) {
-      console.error(err);
       setError('Error creating project');
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
       {error && <div className="col-span-2 text-red-500">{error}</div>}
-      <div className="md:col-span-2">
-        <img src={preview} alt="Project Preview" className="w-full h-48 object-cover rounded mb-4" />
-        <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="border border-gray-300 rounded px-3 py-2 text-black focus:outline-none focus:border-black" />
+      <div className="md:col-span-2 flex flex-col items-center">
+        <img src={preview} alt="Project Preview" className="w-48 h-48 object-cover rounded-full mb-4" />
       </div>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project Name" required className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
-      <input value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="Start Date" type="date" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
-      <input value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="Deadline" type="date" className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black" />
+      <label className="w-full border border-gray-300 rounded-full px-4 py-2 text-black focus-within:outline-none focus-within:border-black focus-within:shadow-[0_0_10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)] cursor-pointer text-center uppercase">
+        CHOOSE FILE
+        <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="hidden" />
+      </label>
+      <SmartInput value={name} onChange={(e) => setName(e.target.value)} placeholder="PROJECT NAME" required className="w-full text-center" />
+      <SmartInput value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="START DATE" type="text" />
+      <SmartInput value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="DEADLINE" type="text" />
       <div className="col-span-2">
-        <label className="block mb-2">Team Members</label>
-        <select multiple value={teamMemberIds} onChange={(e) => setTeamMemberIds(Array.from(e.target.selectedOptions, o => o.value))} className="border border-gray-300 rounded px-3 py-2 w-full">
-          {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
-      </div>
-      <div className="col-span-2">
-        <label className="block mb-2">Materials</label>
-        <select multiple value={materialIds} onChange={(e) => setMaterialIds(Array.from(e.target.selectedOptions, o => o.value))} className="border border-gray-300 rounded px-3 py-2 w-full">
-          {materials.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
+        <UnderlinedHeader title="TEAM & MATERIALS" />
       </div>
       <div className="col-span-2">
-        <button type="button" onClick={addTask} className="mb-4 text-black hover:underline">Add Task</button>
+        <SmartInput as="select" multiple value={teamMemberIds} onChange={(e) => setTeamMemberIds(Array.from(e.target.selectedOptions, o => o.value))} className="w-full">
+          {members.map(m => <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>)}
+        </SmartInput>
+      </div>
+      <div className="col-span-2">
+        <MaterialSelector materials={materials} selected={materialIds} onSelect={(id) => setMaterialIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} />
+      </div>
+      <div className="col-span-2">
+        <button type="button" onClick={addTask} className="mb-4 text-black hover:underline uppercase">ADD TASK</button>
         {initialTasks.map((task, i) => (
-          <div key={i} className="border p-4 mb-4 rounded">
-            <input value={task.name} onChange={(e) => updateTask(i, 'name', e.target.value)} placeholder="Task Name" className="border border-gray-300 rounded px-3 py-2 mb-2 w-full" />
-            <input value={task.startDate || ''} onChange={(e) => updateTask(i, 'startDate', e.target.value)} type="date" placeholder="Task Start" className="border border-gray-300 rounded px-3 py-2 mb-2 w-full" />
-            <input value={task.deadline || ''} onChange={(e) => updateTask(i, 'deadline', e.target.value)} type="date" placeholder="Task Deadline" className="border border-gray-300 rounded px-3 py-2 mb-2 w-full" />
-            <select value={task.assigneeId || ''} onChange={(e) => updateTask(i, 'assigneeId', e.target.value)} className="border border-gray-300 rounded px-3 py-2 mb-2 w-full">
-              <option value="">Select Assignee</option>
-              {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-            <button type="button" onClick={() => addSubtask(i)} className="text-black hover:underline">Add Subtask</button>
+          <div key={i} className="border p-4 mb-4 rounded-lg">
+            <SmartInput value={task.name} onChange={(e) => updateTask(i, 'name', e.target.value)} placeholder="TASK NAME" className="mb-2 w-full" />
+            <SmartInput value={task.startDate || ''} onChange={(e) => updateTask(i, 'startDate', e.target.value)} type="date" placeholder="START" className="mb-2 w-full" />
+            <SmartInput value={task.deadline || ''} onChange={(e) => updateTask(i, 'deadline', e.target.value)} type="date" placeholder="DEADLINE" className="mb-2 w-full" />
+            <SmartInput as="select" value={task.assigneeId || ''} onChange={(e) => updateTask(i, 'assigneeId', e.target.value)} className="mb-2 w-full">
+              <option value="">SELECT ASSIGNEE</option>
+              {members.map(m => <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>)}
+            </SmartInput>
+            <button type="button" onClick={() => addSubtask(i)} className="text-black hover:underline uppercase">ADD SUBTASK</button>
             {task.subtasks.map((sub, j) => (
-              <input key={j} value={sub} onChange={(e) => updateSubtask(i, j, e.target.value)} placeholder="Subtask" className="border border-gray-300 rounded px-3 py-2 mb-2 w-full" />
+              <SmartInput key={j} value={sub} onChange={(e) => updateSubtask(i, j, e.target.value)} placeholder="SUBTASK" className="mb-2 w-full" />
             ))}
           </div>
         ))}
       </div>
-      <textarea value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="Initial Notes" rows={3} className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black md:col-span-2" />
-      <button type="submit" className="col-span-full text-black hover:underline block text-center">
-        Save Project
-      </button>
+      <SmartInput as="textarea" value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="INITIAL NOTES" rows={3} className="md:col-span-2" />
+      <div className="col-span-full flex justify-center mb-6">
+        <button type="submit" className="text-black hover:underline">
+          <Typography variant="15" className="text-black">SAVE PROJECT</Typography>
+        </button>
+      </div>
     </form>
   );
 }

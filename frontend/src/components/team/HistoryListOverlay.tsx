@@ -36,7 +36,7 @@ export default function HistoryListOverlay({ taskHistory, onClose, onSelectTask 
   const rightTasks = sortedHistory.slice(half);
 
   return (
-    <BlurryOverlayPanel onClose={onClose}>
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
       <UnderlinedHeader title="TASK HISTORY" />
       {sortedHistory.length > 0 ? (
         <div className="flex gap-4 mb-6">
@@ -45,6 +45,7 @@ export default function HistoryListOverlay({ taskHistory, onClose, onSelectTask 
               <div 
                 key={histTask.id} 
                 className="flex items-center cursor-pointer"
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={() => onSelectTask(histTask)}
               >
                 <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
@@ -65,6 +66,7 @@ export default function HistoryListOverlay({ taskHistory, onClose, onSelectTask 
               <div 
                 key={histTask.id} 
                 className="flex items-center cursor-pointer"
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={() => onSelectTask(histTask)}
               >
                 <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">

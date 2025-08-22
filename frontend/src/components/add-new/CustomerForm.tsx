@@ -1,4 +1,4 @@
-// frontend/src/components/add-new/TeamMemberForm.tsx
+// frontend/src/components/add-new/CustomerForm.tsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import Typography from '../common/Typography';
@@ -6,14 +6,14 @@ import SmartInput from '../common/SmartInput';
 
 interface Project { id: string; name: string; }
 
-export default function TeamMemberForm() {
+export default function CustomerForm() {
   const { getToken } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [position, setPosition] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [initialNotes, setInitialNotes] = useState('');
   const [projectIds, setProjectIds] = useState<string[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState('/profile-icon.jpg');
@@ -43,9 +43,9 @@ export default function TeamMemberForm() {
   const resetForm = () => {
     setName('');
     setEmail('');
-    setPosition('');
-    setStartDate('');
-    setEndDate('');
+    setPhone('');
+    setAddress('');
+    setInitialNotes('');
     setProjectIds([]);
     setImage(null);
     setPreview('/profile-icon.jpg');
@@ -61,14 +61,14 @@ export default function TeamMemberForm() {
     const formData = new FormData();
     formData.append('name', name);
     formData.append('email', email);
-    formData.append('position', position);
-    if (startDate) formData.append('startDate', startDate);
-    if (endDate) formData.append('endDate', endDate);
+    formData.append('phone', phone);
+    formData.append('address', address);
+    if (initialNotes) formData.append('initialNotes', initialNotes);
     if (projectIds.length) formData.append('projectIds', JSON.stringify(projectIds));
     if (image) formData.append('image', image);
 
     try {
-      const res = await fetch('/api/members', {
+      const res = await fetch('/api/customers', {
         method: 'POST',
         body: formData,
         headers: { Authorization: `Bearer ${token}` },
@@ -77,10 +77,10 @@ export default function TeamMemberForm() {
         resetForm();
         setError(null);
       } else {
-        setError('Failed to create team member');
+        setError('Failed to create customer');
       }
     } catch (err) {
-      setError('Error creating team member');
+      setError('Error creating customer');
     }
   };
 
@@ -96,18 +96,18 @@ export default function TeamMemberForm() {
       </div>
       <SmartInput value={name} onChange={(e) => setName(e.target.value)} placeholder="NAME" required />
       <SmartInput value={email} onChange={(e) => setEmail(e.target.value)} placeholder="EMAIL" type="email" required />
-      <SmartInput value={position} onChange={(e) => setPosition(e.target.value)} placeholder="POSITION" required />
-      <SmartInput value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="START" type="date" />
-      <SmartInput value={endDate} onChange={(e) => setEndDate(e.target.value)} placeholder="END" type="date" />
+      <SmartInput value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="PHONE" type="tel" />
+      <SmartInput value={address} onChange={(e) => setAddress(e.target.value)} placeholder="ADDRESS" />
       <div className="col-span-2">
         <label className="block mb-2">ASSIGN PROJECTS</label>
         <SmartInput as="select" multiple value={projectIds} onChange={(e) => setProjectIds(Array.from(e.target.selectedOptions, o => o.value))} className="w-full">
           {projects.map(p => <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>)}
         </SmartInput>
       </div>
+      <SmartInput as="textarea" value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="INITIAL NOTES" rows={3} className="md:col-span-2" />
       <div className="col-span-full flex justify-center mb-6">
         <button type="submit" className="text-black hover:underline">
-          <Typography variant="15" className="text-black">ADD MEMBER</Typography>
+          <Typography variant="15" className="text-black">ADD CUSTOMER</Typography>
         </button>
       </div>
     </form>

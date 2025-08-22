@@ -1,5 +1,11 @@
+// frontend/src/components/inventory/AddQuantityModal.tsx
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import Typography from '../common/Typography';
+import UnderlinedHeader from '../common/UnderlinedHeader';
+import ActionButtonsRow from '../common/ActionButtonsRow';
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
+import StyledLink from '../common/StyledLink';
 
 type AddQuantityModalProps = {
   materialId: string;
@@ -63,42 +69,32 @@ export default function AddQuantityModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 p-6 overflow-y-auto shadow-xl">
-      <h2 className="text-2xl font-bold mb-4">Add Material Quantity</h2>
-
-      <label className="block text-sm font-medium mb-1">
-        Amount to Add (in meters):
-      </label>
-      <input
-        type="number"
-        step="0.01"
-        min="0.01"
-        className="border p-2 rounded w-full mb-4"
-        value={amountToAdd ?? ''}
-        onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setAmountToAdd(isNaN(val) ? 0 : val);
-        }}
-      />
-
-      {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-
-      <div className="flex gap-3 mt-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={handleSubmit}
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+      <UnderlinedHeader title="ADD QUANTITY" />
+      <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
+        <Typography variant="13" className="text-black">Amount to Add (in meters):</Typography>
+        <input
+          type="number"
+          step="0.01"
+          min="0.01"
+          className="border border-black p-2 rounded w-full"
+          value={amountToAdd ?? ''}
+          onChange={(e) => {
+            const val = parseFloat(e.target.value);
+            setAmountToAdd(isNaN(val) ? 0 : val);
+          }}
           disabled={loading}
-        >
-          {loading ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          className="border border-gray-400 px-4 py-2 rounded"
-          onClick={onClose}
-          disabled={loading}
-        >
-          Cancel
-        </button>
+        />
+        {error && <Typography variant="13" className="text-red-600">{error}</Typography>}
       </div>
-    </div>
+      <ActionButtonsRow>
+        <StyledLink onClick={loading ? () => {} : handleSubmit} className="text-black">
+          <Typography variant="15" className="text-black">{loading ? 'Saving...' : 'SAVE'}</Typography>
+        </StyledLink>
+        <StyledLink onClick={loading ? () => {} : onClose} className="text-black">
+          <Typography variant="15" className="text-black">CANCEL</Typography>
+        </StyledLink>
+      </ActionButtonsRow>
+    </BlurryOverlayPanel>
   );
 }

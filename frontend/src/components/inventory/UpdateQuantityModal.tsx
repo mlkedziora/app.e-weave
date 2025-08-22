@@ -1,5 +1,12 @@
+// frontend/src/components/inventory/UpdateQuantityModal.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import Typography from '../common/Typography';
+import UnderlinedHeader from '../common/UnderlinedHeader';
+import ActionButtonsRow from '../common/ActionButtonsRow';
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
+import StyledLink from '../common/StyledLink';
+import SmartInput from '../common/SmartInput';
 
 type UpdateQuantityModalProps = {
   materialId: string;
@@ -8,6 +15,7 @@ type UpdateQuantityModalProps = {
   onSuccess?: (newLength: number) => void; // Updated typing
 };
 
+type User = { id: string; name: string };
 type Project = { id: string; name: string };
 type Task = { id: string; name: string };
 
@@ -18,6 +26,8 @@ export default function UpdateQuantityModal({
   onSuccess,
 }: UpdateQuantityModalProps) {
   const [newLength, setNewLength] = useState<number>(currentLength);
+  const [users, setUsers] = useState<User[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -25,6 +35,28 @@ export default function UpdateQuantityModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
+
+  // Fetch all users on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/members', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(`Failed to load users: ${res.status} - ${errMsg}`);
+        }
+        const data = await res.json();
+        setUsers(data.map((u: any) => ({ id: u.id, name: u.name })));
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to load users.');
+      }
+    };
+    fetchUsers();
+  }, [getToken]);
 
   // Fetch all projects on mount
   useEffect(() => {
@@ -34,12 +66,15 @@ export default function UpdateQuantityModal({
         const res = await fetch('/api/projects', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setProjects(data.map((p: any) => ({ id: p.id, name: p.name })));
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(`Failed to load projects: ${res.status} - ${errMsg}`);
         }
-      } catch (err) {
-        setError('Failed to load projects.');
+        const data = await res.json();
+        setProjects(data.map((p: any) => ({ id: p.id, name: p.name })));
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to load projects.');
       }
     };
     fetchProjects();
@@ -58,12 +93,15 @@ export default function UpdateQuantityModal({
         const res = await fetch(`/api/projects/${selectedProjectId}?t=${Date.now()}`, { // Add cache busting
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (res.ok) {
-          const data = await res.json();
-          setTasks((data.tasks || []).map((t: any) => ({ id: t.id, name: t.name })));
+        if (!res.ok) {
+          const errMsg = await res.text();
+          throw new Error(`Failed to load tasks: ${res.status} - ${errMsg}`);
         }
-      } catch (err) {
-        setError('Failed to load tasks.');
+        const data = await res.json();
+        setTasks((data.tasks || []).map((t: any) => ({ id: t.id, name: t.name })));
+      } catch (err: any) {
+        console.error(err);
+        setError(err.message || 'Failed to load tasks.');
       }
     };
     fetchTasks();
@@ -74,8 +112,8 @@ export default function UpdateQuantityModal({
       setError('Please enter a valid number less than current length to reduce quantity.');
       return;
     }
-    if (!selectedTaskId) {
-      setError('Please select a project and task.');
+    if (!selectedUserId || !selectedTaskId) {
+      setError('Please select a user, project, and task.');
       return;
     }
 
@@ -95,6 +133,7 @@ export default function UpdateQuantityModal({
           previousLength: currentLength,
           newLength,
           taskId: selectedTaskId,
+          teamMemberId: selectedUserId,
         }),
       });
 
@@ -116,72 +155,73 @@ export default function UpdateQuantityModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-white z-50 p-6 overflow-y-auto shadow-xl">
-      <h2 className="text-2xl font-bold mb-4">Reduce Material Quantity</h2>
-
-      <label className="block text-sm font-medium mb-1">
-        Select Project:
-      </label>
-      <select
-        value={selectedProjectId}
-        onChange={(e) => setSelectedProjectId(e.target.value)}
-        className="border p-2 rounded w-full mb-4"
-      >
-        <option value="">Choose a project...</option>
-        {projects.map((p) => (
-          <option key={p.id} value={p.id}>{p.name}</option>
-        ))}
-      </select>
-
-      <label className="block text-sm font-medium mb-1">
-        Select Task:
-      </label>
-      <select
-        value={selectedTaskId}
-        onChange={(e) => setSelectedTaskId(e.target.value)}
-        className="border p-2 rounded w-full mb-4"
-        disabled={!selectedProjectId}
-      >
-        <option value="">Choose a task...</option>
-        {tasks.map((t) => (
-          <option key={t.id} value={t.id}>{t.name}</option>
-        ))}
-      </select>
-
-      <label className="block text-sm font-medium mb-1">
-        New Length (in meters, must be less than current):
-      </label>
-      <input
-        type="number"
-        step="0.01"
-        min="0"
-        max={currentLength - 0.01}  // Enforce less than current
-        className="border p-2 rounded w-full mb-4"
-        value={newLength ?? ''}
-        onChange={(e) => {
-          const val = parseFloat(e.target.value);
-          setNewLength(isNaN(val) ? undefined : val);
-        }}
-      />
-
-      {error && <p className="text-red-600 text-sm mb-2">{error}</p>}
-
-      <div className="flex gap-3 mt-4">
-        <button
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          onClick={handleSubmit}
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+      <UnderlinedHeader title="UPDATE QUANTITY" />
+      <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
+        <Typography variant="13" className="text-black">Select User:</Typography>
+        <SmartInput
+          as="select"
+          value={selectedUserId}
+          onChange={(e: any) => setSelectedUserId(e.target.value)}
+          className="w-full uppercase text-left"
           disabled={loading}
         >
-          {loading ? 'Saving...' : 'Save'}
-        </button>
-        <button
-          className="border border-gray-400 px-4 py-2 rounded"
-          onClick={onClose}
+          <option value="">CHOOSE A USER...</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.name.toUpperCase()}</option>
+          ))}
+        </SmartInput>
+        <Typography variant="13" className="text-black">Select Project:</Typography>
+        <SmartInput
+          as="select"
+          value={selectedProjectId}
+          onChange={(e: any) => setSelectedProjectId(e.target.value)}
+          className="w-full uppercase text-left"
           disabled={loading}
         >
-          Cancel
-        </button>
+          <option value="">CHOOSE A PROJECT...</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
+          ))}
+        </SmartInput>
+        <Typography variant="13" className="text-black">Select Task:</Typography>
+        <SmartInput
+          as="select"
+          value={selectedTaskId}
+          onChange={(e: any) => setSelectedTaskId(e.target.value)}
+          className="w-full uppercase text-left"
+          disabled={!selectedProjectId || loading}
+        >
+          <option value="">CHOOSE A TASK...</option>
+          {tasks.map((t) => (
+            <option key={t.id} value={t.id}>{t.name.toUpperCase()}</option>
+          ))}
+        </SmartInput>
+        <Typography variant="13" className="text-black">New Length (in meters, must be less than current):</Typography>
+        <SmartInput
+          as="input"
+          type="number"
+          step="0.01"
+          min="0"
+          max={currentLength - 0.01}
+          value={newLength ?? ''}
+          onChange={(e: any) => {
+            const val = parseFloat(e.target.value);
+            setNewLength(isNaN(val) ? undefined : val);
+          }}
+          className="w-full"
+          disabled={loading}
+        />
+        {error && <Typography variant="13" className="text-red-600">{error}</Typography>}
       </div>
-    </div>
+      <ActionButtonsRow>
+        <StyledLink onClick={loading ? () => {} : handleSubmit} className="text-black">
+          <Typography variant="15" className="text-black">{loading ? 'Saving...' : 'SAVE'}</Typography>
+        </StyledLink>
+        <StyledLink onClick={loading ? () => {} : onClose} className="text-black">
+          <Typography variant="15" className="text-black">CANCEL</Typography>
+        </StyledLink>
+      </ActionButtonsRow>
+    </BlurryOverlayPanel>
   );
 }

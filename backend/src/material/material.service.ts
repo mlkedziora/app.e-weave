@@ -176,27 +176,18 @@ export class MaterialService {
       const currentTeamMember = await tx.teamMember.findFirst({ where: { userId: currentUserId } });
       if (!currentTeamMember) throw new Error('Current team member not found');
 
-      const selectedTeamMember = await tx.teamMember.findUnique({ where: { id: dto.teamMemberId } });
-      if (!selectedTeamMember || selectedTeamMember.teamId !== currentTeamMember.teamId) {
-        throw new Error('Invalid selected team member');
-      }
+      let teamMemberForHistory = currentTeamMember;
 
-      const material = await tx.material.findUnique({ where: { id: materialId } });
-      if (!material) throw new Error('Material not found');
-
-      // Create history entry
-      const history = await tx.materialHistory.create({
-        data: {
-          materialId,
-          teamMemberId: selectedTeamMember.id,
-          previousLength: dto.previousLength,
-          newLength: dto.newLength,
-          taskId: dto.taskId,  // Add this; undefined -> null if not provided
-        },
-      });
-
-      // If taskId provided, create TaskMaterial and validate
       if (dto.taskId) {
+        if (!dto.teamMemberId) {
+          throw new Error('teamMemberId is required when taskId is provided');
+        }
+        const selectedTeamMember = await tx.teamMember.findUnique({ where: { id: dto.teamMemberId } });
+        if (!selectedTeamMember || selectedTeamMember.teamId !== currentTeamMember.teamId) {
+          throw new Error('Invalid selected team member');
+        }
+        teamMemberForHistory = selectedTeamMember;
+
         const task = await tx.task.findUnique({ where: { id: dto.taskId }, include: { project: true } });
         if (!task) throw new Error('Task not found');
 
@@ -213,15 +204,32 @@ export class MaterialService {
             taskId: dto.taskId,
             materialId,
             amountUsed,
-            teamMemberId: selectedTeamMember.id,
+            teamMemberId: teamMemberForHistory.id,
           },
         });
+      } else {
+        const amountAdded = dto.newLength - dto.previousLength;
+        if (amountAdded <= 0) throw new Error('Amount added must be positive for restocking');
       }
+
+      const material = await tx.material.findUnique({ where: { id: materialId } });
+      if (!material) throw new Error('Material not found');
 
       // Update material length
       await tx.material.update({
         where: { id: materialId },
         data: { length: dto.newLength },
+      });
+
+      // Create history entry
+      const history = await tx.materialHistory.create({
+        data: {
+          materialId,
+          teamMemberId: teamMemberForHistory.id,
+          previousLength: dto.previousLength,
+          newLength: dto.newLength,
+          taskId: dto.taskId || null,
+        },
       });
 
       return history;

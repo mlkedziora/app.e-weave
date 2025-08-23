@@ -12,6 +12,7 @@ export class CreateMaterialHistoryDto {
   @IsString()
   taskId?: string;
 
+  @IsOptional()
   @IsString()
-  teamMemberId: string;
+  teamMemberId?: string;
 }

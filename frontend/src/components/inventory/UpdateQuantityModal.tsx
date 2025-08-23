@@ -36,6 +36,10 @@ export default function UpdateQuantityModal({
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
 
+  const customInnerStyle = {
+    overflow: 'visible',
+  };
+
   // Fetch all users on mount
   useEffect(() => {
     const fetchUsers = async () => {
@@ -155,15 +159,15 @@ export default function UpdateQuantityModal({
   };
 
   return (
-    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+    <BlurryOverlayPanel draggable={true} innerStyle={customInnerStyle} onClose={onClose}>
       <UnderlinedHeader title="UPDATE QUANTITY" />
       <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
-        <Typography variant="13" className="text-black">Select User:</Typography>
+        <Typography variant="15" className="text-black mb-2">Select User:</Typography>
         <SmartInput
           as="select"
           value={selectedUserId}
           onChange={(e: any) => setSelectedUserId(e.target.value)}
-          className="w-full uppercase text-left"
+          className="w-full uppercase text-left bg-white border border-black p-2"
           disabled={loading}
         >
           <option value="">CHOOSE A USER...</option>
@@ -171,12 +175,12 @@ export default function UpdateQuantityModal({
             <option key={u.id} value={u.id}>{u.name.toUpperCase()}</option>
           ))}
         </SmartInput>
-        <Typography variant="13" className="text-black">Select Project:</Typography>
+        <Typography variant="15" className="text-black mb-2">Select Project:</Typography>
         <SmartInput
           as="select"
           value={selectedProjectId}
           onChange={(e: any) => setSelectedProjectId(e.target.value)}
-          className="w-full uppercase text-left"
+          className="w-full uppercase text-left bg-white border border-black p-2"
           disabled={loading}
         >
           <option value="">CHOOSE A PROJECT...</option>
@@ -184,12 +188,12 @@ export default function UpdateQuantityModal({
             <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
           ))}
         </SmartInput>
-        <Typography variant="13" className="text-black">Select Task:</Typography>
+        <Typography variant="15" className="text-black mb-2">Select Task:</Typography>
         <SmartInput
           as="select"
           value={selectedTaskId}
           onChange={(e: any) => setSelectedTaskId(e.target.value)}
-          className="w-full uppercase text-left"
+          className="w-full uppercase text-left bg-white border border-black p-2"
           disabled={!selectedProjectId || loading}
         >
           <option value="">CHOOSE A TASK...</option>
@@ -197,7 +201,7 @@ export default function UpdateQuantityModal({
             <option key={t.id} value={t.id}>{t.name.toUpperCase()}</option>
           ))}
         </SmartInput>
-        <Typography variant="13" className="text-black">New Length (in meters, must be less than current):</Typography>
+        <Typography variant="15" className="text-black mb-2">New Length (in meters, must be less than current):</Typography>
         <SmartInput
           as="input"
           type="number"
@@ -209,7 +213,7 @@ export default function UpdateQuantityModal({
             const val = parseFloat(e.target.value);
             setNewLength(isNaN(val) ? undefined : val);
           }}
-          className="w-full"
+          className="w-full bg-white border border-black p-2"
           disabled={loading}
         />
         {error && <Typography variant="13" className="text-red-600">{error}</Typography>}

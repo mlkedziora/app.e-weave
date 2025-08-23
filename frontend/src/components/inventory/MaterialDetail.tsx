@@ -7,6 +7,7 @@ import EditNoteModal from './EditNoteModal'
 import AddNoteModal from './AddNoteModal'
 import AllNotesModal from './AllNotesModal'
 import AddQuantityModal from './AddQuantityModal'
+import AddProject from './AddProject' // ✅ Added import
 import { useUser, useAuth } from '@clerk/clerk-react'
 import ScrollablePanel from '../common/ScrollablePanel' // ✅ Use for panel + scroll
 import EmptyPanel from '../common/EmptyPanel' // ✅ Use for no-material state
@@ -129,6 +130,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [selectedProject, setSelectedProject] = useState<any | null>(null)
   const [showAllAssigned, setShowAllAssigned] = useState(false)
+  const [showAddProject, setShowAddProject] = useState(false) // ✅ Added state for AddProject
 
   const { user: currentUser } = useUser()
   const { getToken } = useAuth()
@@ -215,7 +217,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           <Typography variant="13" className="text-black italic mb-6">No assigned projects.</Typography>
         )}
         <ActionButtonsRow>
-          <StyledLink onClick={() => {}} className="text-black">
+          <StyledLink onClick={() => setShowAddProject(true)} className="text-black"> {/* ✅ Updated onClick */}
             <Typography variant="15" className="text-black">ADD PROJECT</Typography>
           </StyledLink>
           <StyledLink onClick={() => setShowAllAssigned(!showAllAssigned)} className="text-black">
@@ -417,6 +419,17 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
       {selectedProject && (
         <ProjectTasksView project={selectedProject} onClose={() => setSelectedProject(null)} />
+      )}
+
+      {showAddProject && ( // ✅ Added conditional render
+        <AddProject
+          material={material}
+          onClose={() => setShowAddProject(false)}
+          onAdded={() => {
+            setShowAddProject(false);
+            onRefresh();
+          }}
+        />
       )}
     </ScrollablePanel>
   )

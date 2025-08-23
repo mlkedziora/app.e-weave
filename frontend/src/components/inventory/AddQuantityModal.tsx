@@ -6,6 +6,7 @@ import UnderlinedHeader from '../common/UnderlinedHeader';
 import ActionButtonsRow from '../common/ActionButtonsRow';
 import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
 import StyledLink from '../common/StyledLink';
+import SmartInput from '../common/SmartInput';
 
 type AddQuantityModalProps = {
   materialId: string;
@@ -73,16 +74,17 @@ export default function AddQuantityModal({
       <UnderlinedHeader title="ADD QUANTITY" />
       <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
         <Typography variant="13" className="text-black">Amount to Add (in meters):</Typography>
-        <input
+        <SmartInput
+          as="input"
           type="number"
           step="0.01"
           min="0.01"
-          className="border border-black p-2 rounded w-full"
           value={amountToAdd ?? ''}
           onChange={(e) => {
             const val = parseFloat(e.target.value);
             setAmountToAdd(isNaN(val) ? 0 : val);
           }}
+          className="w-full bg-white border border-black p-2"
           disabled={loading}
         />
         {error && <Typography variant="13" className="text-red-600">{error}</Typography>}

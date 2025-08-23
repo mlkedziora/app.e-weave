@@ -50,6 +50,16 @@ export default function BlurryOverlayPanel({
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (!draggable || e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.closest('button') ||
+      target.closest('a')
+    ) {
+      return;
+    }
     setRel({ x: e.clientX - position.x, y: e.clientY - position.y });
     setDragging(true);
     e.stopPropagation();

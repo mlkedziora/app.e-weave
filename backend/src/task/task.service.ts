@@ -1,19 +1,13 @@
+// backend/src/task/task.service.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { CreateTaskDto } from '../task/dto/create-task.dto.js';
 
 @Injectable()
 export class TaskService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: {
-    projectId: string;
-    name: string;
-    startedAt: Date;
-    deadline?: Date;
-    assigneeId?: string;
-    subtasks?: string[];
-    userId: string;
-  }) {
+  async create(dto: CreateTaskDto & { userId: string }) {
     return this.prisma.$transaction(async (tx) => {
       const teamMember = await tx.teamMember.findFirst({
         where: { userId: dto.userId },
@@ -25,8 +19,8 @@ export class TaskService {
       const task = await tx.task.create({
         data: {
           name: dto.name,
-          startedAt: dto.startedAt,
-          deadline: dto.deadline,
+          startedAt: dto.startedAt ? new Date(dto.startedAt) : new Date(),
+          deadline: dto.deadline ? new Date(dto.deadline) : undefined,
           project: {
             connect: { id: dto.projectId },
           },
@@ -57,7 +51,12 @@ export class TaskService {
         }
       }
 
-      return task;
+      return tx.task.findUnique({
+        where: { id: task.id },
+        include: {
+          subtasks: true,
+        },
+      });
     });
   }
 
@@ -155,6 +154,72 @@ export class TaskService {
       await tx.materialHistory.deleteMany({ where: { taskId: id } });
 
       return tx.task.delete({ where: { id } });
+    });
+  }
+
+  async assign(id: string, assigneeId: string, userId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const assigner = await tx.teamMember.findFirst({
+        where: { userId },
+      });
+      if (!assigner) {
+        throw new Error('Team member not found');
+      }
+
+      const task = await tx.task.findUnique({
+        where: { id },
+        include: { project: true },
+      });
+      if (!task) {
+        throw new Error('Task not found');
+      }
+
+      // Optional: Authorization check
+      // if (assigner.role !== 'admin' && task.assignedById !== assigner.id) {
+      //   throw new Error('Unauthorized to assign this task');
+      // }
+
+      await tx.taskAssignee.upsert({
+        where: {
+          taskId_teamMemberId: { taskId: id, teamMemberId: assigneeId },
+        },
+        update: {},
+        create: {
+          taskId: id,
+          teamMemberId: assigneeId,
+        },
+      });
+
+      const existingProjectAssignee = await tx.projectAssignee.findFirst({
+        where: { projectId: task.projectId, teamMemberId: assigneeId },
+      });
+      if (!existingProjectAssignee) {
+        await tx.projectAssignee.create({
+          data: { projectId: task.projectId, teamMemberId: assigneeId },
+        });
+      }
+
+      return tx.task.findUnique({
+        where: { id },
+        include: {
+          assignees: {
+            include: { teamMember: true },
+          },
+          subtasks: true,
+          taskMaterials: {
+            include: {
+              material: true,
+              teamMember: { select: { name: true } },
+            },
+          },
+          materialHistories: {
+            include: {
+              material: true,
+              teamMember: { select: { name: true } },
+            },
+          },
+        },
+      });
     });
   }
 }

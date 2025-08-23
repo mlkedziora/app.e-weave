@@ -13,7 +13,7 @@ export default function AddNewTabs() {
   const [activeTab, setActiveTab] = useState(tabs[0])
 
   // ======= CATEGORY STRIP TUNABLES =======
-  const SHEET_HEIGHT_PX   = 36   // header height
+  const SHEET_HEIGHT_PX   = 36
   const SHEET_OVERLAP_PX  = 20
   const SHEET_GAP_PX      = 20
   const UNDERLAP_WIDTH_PX = 100
@@ -29,18 +29,18 @@ export default function AddNewTabs() {
   const activeIndex = tabs.findIndex(tab => tab === activeTab)
   const maxDist = Math.max(activeIndex, tabs.length - 1 - activeIndex)
 
-  const getBgForDist = (dist: number, maxDist: number) => {
-    if (maxDist === 0) return '#FFFFFF'
-    const factor = dist / maxDist
+  const getBgForDist = (dist: number, max: number) => {
+    if (max === 0) return '#FFFFFF'
+    const factor = dist / max
     const start = 255
     const end = 122
     const value = Math.round(start - (start - end) * factor)
     return `rgb(${value},${value},${value})`
   }
 
-  const isDarkForDist = (dist: number, maxDist: number) => {
-    if (maxDist === 0) return false
-    const factor = dist / maxDist
+  const isDarkForDist = (dist: number, max: number) => {
+    if (max === 0) return false
+    const factor = dist / max
     const start = 255
     const end = 122
     const value = Math.round(start - (start - end) * factor)
@@ -72,7 +72,10 @@ export default function AddNewTabs() {
   }
 
   return (
-    <div className="w-full bg-white p-4 rounded-lg shadow-md text-black max-h-full flex flex-col">
+    <div
+      className="w-full bg-white p-4 rounded-lg shadow-md text-black max-h-full flex flex-col"
+      style={{ ['--card-pad' as any]: '1rem' }} // 👈 expose card padding if you want to use CSS vars later
+    >
       {/* Header (rounded + clipped) */}
       <div className="-mx-4 -mt-4 border-b border-gray-300 shrink-0 rounded-t-lg">
         <div className="relative flex items-stretch" style={{ height: SHEET_HEIGHT_PX }}>
@@ -131,7 +134,8 @@ export default function AddNewTabs() {
         </div>
       </div>
 
-      <ScrollableContainer className="space-y-6 overflow-auto">
+      {/* ⬇️ Ensure no extra inner padding so form sections can truly full-bleed */}
+      <ScrollableContainer className="space-y-6 overflow-auto p-0">
         {renderForm()}
       </ScrollableContainer>
     </div>

@@ -43,7 +43,6 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
   const [newTaskEndDate, setNewTaskEndDate] = useState('');
   const [showAddSubtaskForm, setShowAddSubtaskForm] = useState(false);
   const [newSubtaskNames, setNewSubtaskNames] = useState<string[]>([]);
-  const [addedSubtaskNames, setAddedSubtaskNames] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
   const textareaRefs = useRef<HTMLTextAreaElement[]>([]);
@@ -131,38 +130,38 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
     setNewSubtaskNames((prev) => [...prev, '']);
   };
 
-  const handleAdd = (index: number) => {
-    const name = newSubtaskNames[index].trim();
-    if (!name) {
-      setError('Enter a subtask description.');
-      return;
+  const handleAddSubtask = async (name: string, taskId: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return null;
     }
     setError(null);
-    setAddedSubtaskNames((prev) => [...prev, name]);
-    setNewSubtaskNames((prev) => {
-      const newPrev = [...prev];
-      newPrev.splice(index, 1);
-      return newPrev;
-    });
-  };
-
-  const handleAddAll = () => {
-    const namesToAdd = newSubtaskNames.map((n) => n.trim()).filter((n) => n);
-    if (namesToAdd.length === 0) {
-      setError('No subtasks to add.');
-      return;
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/subtasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          taskId,
+          name: trimmed,
+        }),
+      });
+      if (res.ok) {
+        const newSub = await res.json();
+        return { id: newSub.id, name: trimmed, completed: false, completedAt: null };
+      } else {
+        const errorBody = await res.json();
+        setError(`Failed to add subtask: ${errorBody.message || 'Unknown error'}`);
+        return null;
+      }
+    } catch (err) {
+      console.error('Error adding subtask:', err);
+      setError('Error adding subtask, possibly due to network issues.');
+      return null;
     }
-    setError(null);
-    setAddedSubtaskNames((prev) => [...prev, ...namesToAdd]);
-    setNewSubtaskNames([]);
-  };
-
-  const handleRemoveAdded = (index: number) => {
-    setAddedSubtaskNames((prev) => {
-      const newPrev = [...prev];
-      newPrev.splice(index, 1);
-      return newPrev;
-    });
   };
 
   const handleCancel = (index: number) => {
@@ -182,12 +181,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
       setError('Please select a project and task.');
       return;
     }
-    if (!member.id || typeof member.id !== 'string') {
-      setError('Invalid assignee ID.');
-      return;
-    }
     try {
-      console.log('Sending body:', { assigneeId: member.id, type: typeof member.id }); // ✅ Log for debug
       const token = await getToken();
       const res = await fetch(`/api/tasks/${selectedTaskId}/assign`, {
         method: 'POST',
@@ -196,7 +190,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          assigneeId: member.id,
+          assignedMemberId: member.id,
         }),
       });
       if (res.ok) {
@@ -204,9 +198,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
         onAssigned(updatedTask);
         onClose();
       } else {
-        const errorBody = await res.json();
-        console.error('Assign error body:', errorBody); // ✅ Log error body
-        setError('Failed to assign task: ' + (errorBody.message || 'Unknown error'));
+        setError('Failed to assign task.');
       }
     } catch (err) {
       console.error('Error assigning task:', err);
@@ -219,10 +211,6 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
       setError('Please fill in all required fields.');
       return;
     }
-    const subtasksToAdd = [
-      ...addedSubtaskNames,
-      ...newSubtaskNames.map((n) => n.trim()).filter((n) => n),
-    ];
     try {
       const token = await getToken();
       const res = await fetch('/api/tasks', {
@@ -234,21 +222,27 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
         body: JSON.stringify({
           projectId: selectedProjectId,
           name: newTaskName,
-          startedAt: newTaskStartDate,
+          startDate: newTaskStartDate,
           deadline: newTaskEndDate,
-          assigneeId: member.id,
-          subtasks: subtasksToAdd,
+          assignedMemberId: member.id,
+          progress: 0,
         }),
       });
       if (res.ok) {
-        const newTask = await res.json();
+        let newTask = await res.json();
+        const newSubs = [];
+        for (const name of newSubtaskNames) {
+          const sub = await handleAddSubtask(name, newTask.id);
+          if (sub) {
+            newSubs.push(sub);
+          }
+        }
+        newTask.subtasks = newSubs;
         setNewSubtaskNames([]);
-        setAddedSubtaskNames([]);
         onAssigned(newTask);
         onClose();
       } else {
-        const errorBody = await res.json();
-        setError('Failed to create task: ' + (errorBody.message || 'Unknown error'));
+        setError('Failed to create task.');
       }
     } catch (err) {
       console.error('Error creating task:', err);
@@ -303,10 +297,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
               ))}
             </SmartInput>
           </div>
-          <div className="flex justify-between">
-            <StyledLink onClick={onClose} className="text-black">
-              <Typography variant="15" className="text-black">CANCEL</Typography>
-            </StyledLink>
+          <div className="flex justify-center">
             <StyledLink onClick={handleAssignExisting} className="text-black">
               <Typography variant="15" className="text-black">ASSIGN</Typography>
             </StyledLink>
@@ -324,7 +315,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
               value={newTaskName}
               onChange={(e) => setNewTaskName(e.target.value)}
               placeholder="ENTER TASK NAME..."
-              className="w-full uppercase text-left text-black bg-white border border-black p-2"
+              className="w-full uppercase text-left"
             />
           </div>
           <div className="flex gap-4 mb-6">
@@ -335,7 +326,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
                 type="date"
                 value={newTaskStartDate}
                 onChange={(e) => setNewTaskStartDate(e.target.value)}
-                className="w-full text-left text-black bg-white border border-black p-2"
+                className="w-full text-left"
               />
             </div>
             <div className="flex-1">
@@ -345,7 +336,7 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
                 type="date"
                 value={newTaskEndDate}
                 onChange={(e) => setNewTaskEndDate(e.target.value)}
-                className="w-full text-left text-black bg-white border border-black p-2"
+                className="w-full text-left"
               />
             </div>
           </div>
@@ -363,22 +354,6 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
             </StyledLink>
             {showAddSubtaskForm && (
               <div className="mt-4">
-                {addedSubtaskNames.length > 0 && (
-                  <div className="mb-6">
-                    <UnderlinedHeader title="ADDED SUBTASKS" />
-                    <div className="space-y-4">
-                      {addedSubtaskNames.map((name, index) => (
-                        <div key={index} className="relative flex items-start">
-                          <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0"></div>
-                          <Typography variant="13" className="text-black flex-1">{name}</Typography>
-                          <StyledLink onClick={() => handleRemoveAdded(index)} className="text-black">
-                            <Typography variant="15" className="text-black">REMOVE</Typography>
-                          </StyledLink>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
                 <UnderlinedHeader title="NEW SUBTASKS" />
                 <div className="space-y-4 mb-6">
                   {newSubtaskNames.map((name, index) => (
@@ -403,9 +378,6 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
                         rows={1}
                       />
                       <div className="absolute top-0 right-0 flex gap-4">
-                        <StyledLink onClick={() => handleAdd(index)} className="text-black">
-                          <Typography variant="15" className="text-black">ADD</Typography>
-                        </StyledLink>
                         <StyledLink onClick={() => handleCancel(index)} className="text-black">
                           <Typography variant="15" className="text-black">CANCEL</Typography>
                         </StyledLink>
@@ -415,9 +387,6 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
                 </div>
                 {newSubtaskNames.length > 1 && (
                   <div className="flex justify-between mb-6">
-                    <StyledLink onClick={handleAddAll} className="text-black">
-                      <Typography variant="15" className="text-black">ADD ALL</Typography>
-                    </StyledLink>
                     <StyledLink onClick={handleCancelAll} className="text-black">
                       <Typography variant="15" className="text-black">CANCEL ALL</Typography>
                     </StyledLink>
@@ -426,18 +395,20 @@ export default function AssignTask({ member, onClose, onAssigned }: AssignTaskPr
               </div>
             )}
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-center">
             <StyledLink onClick={handleCreateAndAssign} className="text-black">
-              <Typography variant="15" className="text-black">CREATE & ASSIGN</Typography>
-            </StyledLink>
-            <StyledLink onClick={onClose} className="text-black">
-              <Typography variant="15" className="text-black">CANCEL</Typography>
+              <Typography variant="15" className="text-black">CREATE AND ASSIGN</Typography>
             </StyledLink>
           </div>
         </>
       )}
 
       {error && <Typography variant="13" className="text-red-500 mt-4">{error}</Typography>}
+      <div className="flex justify-center mt-6">
+        <StyledLink onClick={onClose} className="text-black">
+          <Typography variant="15" className="text-black">CANCEL</Typography>
+        </StyledLink>
+      </div>
     </BlurryOverlayPanel>
   );
 }

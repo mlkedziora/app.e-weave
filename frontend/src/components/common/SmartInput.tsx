@@ -43,7 +43,10 @@ export default function SmartInput({ as = 'input', className = '', ...props }: S
           type="button"
           className={baseClass}
           style={{ borderRadius: radius }}
-          onClick={() => !disabled && setOpen(!open)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!disabled) setOpen(!open);
+          }}
           disabled={disabled}
         >
           <span className="block truncate pr-8">{displayText}</span>
@@ -54,12 +57,17 @@ export default function SmartInput({ as = 'input', className = '', ...props }: S
           </span>
         </button>
         {open && (
-          <div className="absolute z-10 mt-1 w-full bg-white shadow-lg border border-gray-300 overflow-auto max-h-60" style={{ borderRadius: MULTI_LINE_RADIUS }}>
+          <div 
+            className="absolute z-50 mt-1 w-full bg-white shadow-lg border border-gray-300 overflow-auto max-h-60" 
+            style={{ borderRadius: MULTI_LINE_RADIUS }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {childArray.map((child: any, index) => (
               <div
                 key={index}
                 className="px-4 py-2 text-black hover:bg-gray-100 cursor-pointer"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onChange({ target: { value: child.props.value } });
                   setOpen(false);
                 }}

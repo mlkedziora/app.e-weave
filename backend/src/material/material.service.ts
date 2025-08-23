@@ -1,5 +1,5 @@
 // backend/src/material/material.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateMaterialDto } from './dto/create-material.dto.js';
 import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
@@ -302,5 +302,45 @@ export class MaterialService {
     });
 
     return { success: true };
+  }
+
+  async assignProject(materialId: string, projectId: string, taskIds: string[], userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) throw new NotFoundException('Team member not found');
+
+    const material = await this.prisma.material.findUnique({ where: { id: materialId } });
+    if (!material || material.teamId !== teamMember.teamId) throw new NotFoundException('Material not found');
+
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project || project.teamId !== teamMember.teamId) throw new NotFoundException('Project not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      // Assign to project
+      const existingProjectAssign = await tx.projectMaterial.findFirst({
+        where: { materialId, projectId },
+      });
+      if (!existingProjectAssign) {
+        await tx.projectMaterial.create({
+          data: { materialId, projectId },
+        });
+      }
+
+      // Assign to tasks if provided
+      for (const taskId of taskIds) {
+        const task = await tx.task.findUnique({ where: { id: taskId } });
+        if (!task || task.projectId !== projectId) throw new NotFoundException(`Task ${taskId} not found or not in project`);
+
+        const existingTaskAssign = await tx.taskMaterial.findFirst({
+          where: { materialId, taskId },
+        });
+        if (!existingTaskAssign) {
+          await tx.taskMaterial.create({
+            data: { materialId, taskId, amountUsed: 0, teamMemberId: teamMember.id },
+          });
+        }
+      }
+
+      return true;
+    });
   }
 }

@@ -10,11 +10,14 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
+  NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MaterialService } from './material.service.js';
 import { CreateMaterialDto } from './dto/create-material.dto.js';
 import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
+import { AssignProjectDto } from './dto/assign-project.dto';
 import { Multer } from 'multer';
 import { Prisma } from '@prisma/client'; // For Prisma types
 import express from 'express';
@@ -121,5 +124,14 @@ export class MaterialController {
     const userId = req.user?.id;
     if (!userId) throw new Error('Unauthorized');
     return this.materialService.deleteNote(noteId, userId);
+  }
+
+  @Post(':id/assign-project')
+  async assignProject(@Param('id') id: string, @Body() dto: AssignProjectDto, @Req() req: Request) {
+    const userId = req.user?.id;
+    if (!userId) throw new UnauthorizedException('Unauthorized');
+    const result = await this.materialService.assignProject(id, dto.projectId, dto.taskIds || [], userId);
+    if (!result) throw new NotFoundException('Assignment failed');
+    return { success: true };
   }
 }

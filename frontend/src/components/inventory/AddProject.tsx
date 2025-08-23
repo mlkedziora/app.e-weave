@@ -136,7 +136,7 @@ export default function AddProject({ material, onClose, onAdded }: AddProjectPro
   return (
     <BlurryOverlayPanel draggable={true} innerStyle={customInnerStyle} onClose={onClose}>
       <UnderlinedHeader title={`ADD PROJECT TO ${material.name.toUpperCase()}`} />
-      <div className="mb-6">
+      <div className="mb-10"> {/* Increased from mb-6 to mb-12 for more space */}
         <Typography variant="15" className="text-black mb-2">Select Project:</Typography>
         <SmartInput
           as="select"

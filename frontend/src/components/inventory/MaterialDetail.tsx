@@ -45,6 +45,10 @@ type MaterialDetailProps = {
     history: HistoryEntry[];
     materialNotes: Note[];
     assignedTo?: { project: { id: string; name: string } }[]; // For projects
+    climateChange: number;
+    fossilResourceDepletion: number;
+    waterScarcity: number;
+    freshwaterEutrophication: number;
   };
   onRefresh: (newLength?: number) => void
 }
@@ -118,6 +122,62 @@ const ProjectTasksView = ({ project, onClose }: { project: any; onClose: () => v
     </BlurryOverlayPanel>
   )
 }
+
+const CIRCLE_RADIUS = 60; // Adjust this const to change the size of all circular bars at once
+const STROKE_WIDTH = 3; // Adjust this const to change the thickness of the blue loaded part
+const BACKGROUND_STROKE_WIDTH =3; // Adjust this const to change the light grey width
+const LOADED_COLOR = '#46afffff'; // Adjust this const to change the blue color of the loaded part
+const METRICS_GAP_CLASS = 'gap-6'; // Adjust this to change the space gap between the circular bars, e.g., 'gap-8' for larger gap. Note: If it doesn't seem to work, ensure your Tailwind config includes the gap utilities and try increasing the value significantly for testing.
+const METRICS_BOTTOM_MARGIN_CLASS = 'mb-10'; // Adjust this to change the space between the metrics row and the "ADDITIONAL METRICS +" button, e.g., 'mb-8' for more space. This is the class on the div with className={`flex justify-between ${METRICS_PADDING_CLASS} ${METRICS_GAP_CLASS} ${METRICS_BOTTOM_MARGIN_CLASS}`}
+const METRICS_PADDING_CLASS = 'px-22'; // Adjust this to change the distance between the left and right edges of the panel for the circular metrics, e.g., 'px-8' for more padding on sides
+const PROTOTYPE_MARGIN_BOTTOM_CLASS = 'mb-10'; // Adjust this to change the gap between "Prototype – Based on PEFCR Guidelines" and the circular metrics, e.g., 'mb-6' for larger gap
+const TEXT_VERTICAL_OFFSET = '-7px'; // Adjust this const to move the inside text higher (more negative) or lower (positive). e.g., '-4px' to move higher.
+
+const CircularProgress = ({ value, max, label, unit }: { value: number; max: number; label: string; unit: string }) => {
+  const percentage = Math.min((value / max) * 100, 100); // Cap at 100%
+  const normalizedRadius = CIRCLE_RADIUS - STROKE_WIDTH / 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <svg
+        height={CIRCLE_RADIUS * 2}
+        width={CIRCLE_RADIUS * 2}
+        className="transform rotate-[-90deg]"
+      >
+        <circle
+          stroke="#d1d5db" // Light grey for not loaded
+          fill="transparent"
+          strokeWidth={BACKGROUND_STROKE_WIDTH}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={CIRCLE_RADIUS}
+          cy={CIRCLE_RADIUS}
+        />
+        <circle
+          stroke={LOADED_COLOR} // Blue for loaded
+          fill="transparent"
+          strokeWidth={STROKE_WIDTH}
+          strokeDasharray={`${circumference} ${circumference}`}
+          style={{ strokeDashoffset }}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={CIRCLE_RADIUS}
+          cy={CIRCLE_RADIUS}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-center" style={{ transform: `translateY(${TEXT_VERTICAL_OFFSET})` }}>
+        <Typography variant="15" className="text-black whitespace-nowrap">
+          {value.toFixed(2)} {unit}
+        </Typography>
+      </div>
+      <Typography variant="13" className="text-black mt-2 text-center">
+        {label}
+      </Typography>
+    </div>
+  );
+};
 
 export default function MaterialDetail({ material, onRefresh }: MaterialDetailProps) {
   const [showFullHistory, setShowFullHistory] = useState(false)
@@ -313,16 +373,38 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
       {/* ENVIRONMENTAL IMPACT */}
       <div>
         <UnderlinedHeader title="ENVIRONMENTAL IMPACT" />
-        <Typography variant="13" className="text-black mb-4">Prototype – Based on PEFCR Guidelines</Typography>
-        <div className="grid grid-cols-2 gap-6"> {/* ✅ Increased gap */}
-          <Typography variant="15" className="text-black">CO₂ eq (kg): {material.climateChange}</Typography>
-          <Typography variant="15" className="text-black">Fossil Energy (MJ): {material.fossilResourceDepletion}</Typography>
-          <Typography variant="15" className="text-black">Water (m³): {material.waterScarcity}</Typography>
-          <Typography variant="15" className="text-black">Freshwater P eq (kg): {material.freshwaterEutrophication}</Typography>
+        <Typography variant="13" className={`text-black ${PROTOTYPE_MARGIN_BOTTOM_CLASS}`}>Prototype – Based on PEFCR Guidelines</Typography>
+        <div className={`flex justify-between ${METRICS_PADDING_CLASS} ${METRICS_GAP_CLASS} ${METRICS_BOTTOM_MARGIN_CLASS}`}> {/* Row for circular bars */}
+          <CircularProgress 
+            value={material.climateChange} 
+            max={10} // Threshold for CO₂ eq (kg) - adjust based on typical max ~10 kg per unit
+            label="CO₂ eq" 
+            unit="kg"
+          />
+          <CircularProgress 
+            value={material.fossilResourceDepletion} 
+            max={100} // Threshold for Fossil Energy (MJ) - adjust based on typical max ~100 MJ per unit
+            label="Fossil Energy" 
+            unit="MJ"
+          />
+          <CircularProgress 
+            value={material.waterScarcity} 
+            max={20} // Threshold for Water (m³) - adjust based on typical max ~20 m³ per unit
+            label="Water" 
+            unit="m³"
+          />
+          <CircularProgress 
+            value={material.freshwaterEutrophication} 
+            max={0.01} // Threshold for Freshwater P eq (kg) - adjust based on typical max ~0.01 kg per unit
+            label="Freshwater P eq" 
+            unit="kg"
+          />
         </div>
-        <StyledLink onClick={() => setShowAdditionalMetrics(true)} className="mt-4 text-black block">
-          Additional Metrics +
-        </StyledLink>
+        <div className="flex justify-center">
+          <StyledLink onClick={() => setShowAdditionalMetrics(true)} className="text-black">
+            + ADDITIONAL METRICS +
+          </StyledLink>
+        </div>
 
         {showAdditionalMetrics && (
           <AdditionalMetrics material={material} onClose={() => setShowAdditionalMetrics(false)} />

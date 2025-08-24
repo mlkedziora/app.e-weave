@@ -34,9 +34,9 @@ export default function TrackQuantityHistory({ material, onClose, onRefresh }: T
   const tablePadding = 'p-2.5';
 
   return (
-    <BlurryOverlayPanel onClose={onClose}>
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
       <UnderlinedHeader title="TRACK QUANTITY HISTORY" />
-      <div className="border border-black rounded-lg overflow-hidden mb-6">
+      <div className="border border-black rounded-lg overflow-hidden mb-6" onMouseDown={(e) => e.stopPropagation()}>
         {Array.isArray(material.history) && material.history.length > 0 ? (
           <table className="w-full border-collapse bg-white">
             <thead>
@@ -68,7 +68,7 @@ export default function TrackQuantityHistory({ material, onClose, onRefresh }: T
           </div>
         )}
       </div>
-      <ActionButtonsRow>
+      <ActionButtonsRow onMouseDown={(e) => e.stopPropagation()}>
         <StyledLink onClick={() => setShowUpdateModal(true)} className="text-black">
           <Typography variant="15" className="text-black">UPDATE QUANTITY</Typography>
         </StyledLink>
@@ -76,7 +76,7 @@ export default function TrackQuantityHistory({ material, onClose, onRefresh }: T
           <Typography variant="15" className="text-black">ADD QUANTITY</Typography>
         </StyledLink>
       </ActionButtonsRow>
-      <div className="flex justify-center mt-6">
+      <div className="flex justify-center mt-6" onMouseDown={(e) => e.stopPropagation()}>
         <StyledLink onClick={onClose} className="text-black">
           <Typography variant="15" className="text-black">QUIT</Typography>
         </StyledLink>

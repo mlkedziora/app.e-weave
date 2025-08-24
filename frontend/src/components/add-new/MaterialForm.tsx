@@ -34,6 +34,10 @@ export default function MaterialForm({ onSuccess, onCancel }: MaterialFormProps)
   const [preview, setPreview] = useState('/fabric.jpg');
   const [error, setError] = useState<string | null>(null);
 
+  // ======= SELECT CATEGORY TUNABLE =======
+  const CATEGORY_SELECT_PADDING_LEFT = '2rem'; // Adjust this to push the text more to the right
+  // =======================================
+
   useEffect(() => {
     getToken({ template: 'backend-access' }).then(async (t) => {
       setToken(t);
@@ -134,8 +138,8 @@ export default function MaterialForm({ onSuccess, onCancel }: MaterialFormProps)
           <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="hidden" />
         </label>
       </div>
-      <SmartInput as="select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} required className="w-full text-center appearance-none border border-gray-300 rounded-full px-4 py-2 text-black focus:outline-none focus:border-black focus:shadow-[0_0_10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)]">
-        <option value="">SELECT CATEGORY</option>
+      <SmartInput as="select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} required className={`w-full pl-[${CATEGORY_SELECT_PADDING_LEFT}] rounded-full ${selectedCategory ? 'text-black' : 'text-gray-500'}`}>
+        <option value="" disabled hidden>SELECT CATEGORY</option>
         {categories.length === 0 ? (
           <option disabled>NO CATEGORIES AVAILABLE</option>
         ) : (
@@ -160,7 +164,7 @@ export default function MaterialForm({ onSuccess, onCancel }: MaterialFormProps)
       <div className="md:col-span-2 flex justify-center">
         <SmartInput value={certifications} onChange={(e) => setCertifications(e.target.value)} placeholder="KNOWN CERTIFICATIONS" className="w-full md:w-1/2 text-center" />
       </div>
-      <SmartInput as="textarea" value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="INITIAL NOTES" rows={3} className="md:col-span-2 text-center" />
+      <SmartInput as="textarea" value={initialNotes} onChange={(e) => setInitialNotes(e.target.value)} placeholder="INITIAL NOTES" rows={3} className="md:col-span-2 text-center placeholder:text-center" />
       <div className="col-span-full flex justify-center gap-4 mb-6">
         <button type="submit" className="text-black hover:underline">
           <Typography variant="15" className="text-black">SAVE MATERIAL</Typography>

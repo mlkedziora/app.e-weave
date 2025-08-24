@@ -1,5 +1,9 @@
 // frontend/src/components/inventory/AdditionalMetrics.tsx
 import React from 'react';
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
+import UnderlinedHeader from '../common/UnderlinedHeader';
+import Typography from '../common/Typography';
+import StyledLink from '../common/StyledLink';
 
 type AdditionalMetricsProps = {
   material: any;
@@ -7,32 +11,55 @@ type AdditionalMetricsProps = {
 };
 
 export default function AdditionalMetrics({ material, onClose }: AdditionalMetricsProps) {
+  const headerToContentGap = '4';
+  const contentToButtonGap = '12';
+  const contentPadding = '5';
+  const metricVerticalGap = '4';
+
+  const metrics = [
+    { name: 'Climate Change', unit: 'kg CO₂-eq', key: 'climateChange' },
+    { name: 'Ozone Depletion', unit: 'kg CFC-11-eq', key: 'ozoneDepletion' },
+    { name: 'Human Toxicity - Cancer', unit: 'CTUh', key: 'humanToxicityCancer' },
+    { name: 'Human Toxicity - Non-Cancer', unit: 'CTUh', key: 'humanToxicityNonCancer' },
+    { name: 'Particulate Matter', unit: 'disease incidence', key: 'particulateMatter' },
+    { name: 'Ionising Radiation', unit: 'kBq U-235-eq', key: 'ionisingRadiation' },
+    { name: 'Photochemical Ozone Formation', unit: 'kg NMVOC-eq', key: 'photochemicalOzoneFormation' },
+    { name: 'Acidification', unit: 'mol H+-eq', key: 'acidification' },
+    { name: 'Terrestrial Eutrophication', unit: 'mol N-eq', key: 'terrestrialEutrophication' },
+    { name: 'Freshwater Eutrophication', unit: 'kg P-eq', key: 'freshwaterEutrophication' },
+    { name: 'Marine Eutrophication', unit: 'kg N-eq', key: 'marineEutrophication' },
+    { name: 'Freshwater Ecotoxicity', unit: 'CTUe', key: 'freshwaterEcotoxicity' },
+    { name: 'Land Use', unit: 'species-yr', key: 'landUse' },
+    { name: 'Water Scarcity', unit: 'm³ world-eq', key: 'waterScarcity' },
+    { name: 'Mineral Resource Depletion', unit: 'kg Sb-eq', key: 'mineralResourceDepletion' },
+    { name: 'Fossil Resource Depletion', unit: 'MJ', key: 'fossilResourceDepletion' },
+  ];
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md max-w-lg w-full space-y-4">
-        <h2 className="text-xl font-bold">All Environmental Impact Metrics</h2>
-        <div className="grid grid-cols-1 gap-2">
-          <p><strong>Climate Change (kg CO₂-eq):</strong> {material.climateChange}</p>
-          <p><strong>Ozone Depletion (kg CFC-11-eq):</strong> {material.ozoneDepletion}</p>
-          <p><strong>Human Toxicity - Cancer (CTUh):</strong> {material.humanToxicityCancer}</p>
-          <p><strong>Human Toxicity - Non-Cancer (CTUh):</strong> {material.humanToxicityNonCancer}</p>
-          <p><strong>Particulate Matter (disease incidence):</strong> {material.particulateMatter}</p>
-          <p><strong>Ionising Radiation (kBq U-235-eq):</strong> {material.ionisingRadiation}</p>
-          <p><strong>Photochemical Ozone Formation (kg NMVOC-eq):</strong> {material.photochemicalOzoneFormation}</p>
-          <p><strong>Acidification (mol H+-eq):</strong> {material.acidification}</p>
-          <p><strong>Terrestrial Eutrophication (mol N-eq):</strong> {material.terrestrialEutrophication}</p>
-          <p><strong>Freshwater Eutrophication (kg P-eq):</strong> {material.freshwaterEutrophication}</p>
-          <p><strong>Marine Eutrophication (kg N-eq):</strong> {material.marineEutrophication}</p>
-          <p><strong>Freshwater Ecotoxicity (CTUe):</strong> {material.freshwaterEcotoxicity}</p>
-          <p><strong>Land Use (species-yr):</strong> {material.landUse}</p>
-          <p><strong>Water Scarcity (m³ world-eq):</strong> {material.waterScarcity}</p>
-          <p><strong>Mineral Resource Depletion (kg Sb-eq):</strong> {material.mineralResourceDepletion}</p>
-          <p><strong>Fossil Resource Depletion (MJ):</strong> {material.fossilResourceDepletion}</p>
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+      <UnderlinedHeader title="ALL ENVIRONMENTAL IMPACT METRICS" />
+      <div
+        className={`mt-${headerToContentGap} mb-${contentToButtonGap}`}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <div className={`px-${contentPadding} py-0 space-y-${metricVerticalGap}`}>
+          {metrics.map((metric) => (
+            <div key={metric.key} className="flex justify-between">
+              <Typography variant="13" className="text-black text-left font-normal">
+                {metric.name} ({metric.unit})
+              </Typography>
+              <Typography variant="13" className="text-black text-right font-normal">
+                {material[metric.key]}
+              </Typography>
+            </div>
+          ))}
         </div>
-        <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={onClose}>
-          Close
-        </button>
       </div>
-    </div>
+      <div className="flex justify-center" onMouseDown={(e) => e.stopPropagation()}>
+        <StyledLink onClick={onClose} className="text-black">
+          <Typography variant="15" className="text-black">CLOSE</Typography>
+        </StyledLink>
+      </div>
+    </BlurryOverlayPanel>
   );
 }

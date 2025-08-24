@@ -1,5 +1,5 @@
 // backend/src/material/material.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateMaterialDto } from './dto/create-material.dto.js';
 import { CreateMaterialHistoryDto } from './dto/create-material-history.dto.js';
@@ -22,11 +22,9 @@ export class MaterialService {
       });
       categoryId = category.id;
     }
-
     const teamMember = userId ? await this.prisma.teamMember.findFirst({ where: { userId } }) : undefined;
     if (!teamMember) throw new Error('Team member not found');
     const teamId = teamMember.teamId;
-
     // Temporary hardcoded approximations for impact fields (based on fiber; expand as needed)
     let climateChange = 0.0;
     let ozoneDepletion = 0.0;
@@ -45,7 +43,6 @@ export class MaterialService {
     let mineralResourceDepletion = 0.0;
     let fossilResourceDepletion = 0.0;
     let eScore = 0.0;
-
     // Simple fiber-based approximation (e.g., cotton has high water use; synthetic high fossil)
     switch (dto.fiber.toLowerCase()) {
       case 'cotton':
@@ -63,7 +60,6 @@ export class MaterialService {
         // Defaults already 0
         break;
     }
-
     const data: Prisma.MaterialCreateInput = {
       name: dto.name,
       fiber: dto.fiber,
@@ -101,15 +97,12 @@ export class MaterialService {
       fossilResourceDepletion,
       eScore,
     };
-
     const material = await this.prisma.material.create({ data });
-
     if (dto.initialNotes && teamMember) {
       await this.prisma.materialNote.create({
         data: { content: dto.initialNotes, materialId: material.id, teamMemberId: teamMember.id },
       });
     }
-
     return material;
   }
 
@@ -135,7 +128,7 @@ export class MaterialService {
     });
     return rawMaterials.map(material => ({
       ...material,
-      category: material.category?.name || '',  // Flatten to string; '' for uncategorized
+      category: material.category?.name || '', // Flatten to string; '' for uncategorized
     }));
   }
 
@@ -175,9 +168,7 @@ export class MaterialService {
     return this.prisma.$transaction(async (tx) => {
       const currentTeamMember = await tx.teamMember.findFirst({ where: { userId: currentUserId } });
       if (!currentTeamMember) throw new Error('Current team member not found');
-
       let teamMemberForHistory = currentTeamMember;
-
       if (dto.taskId) {
         if (!dto.teamMemberId) {
           throw new Error('teamMemberId is required when taskId is provided');
@@ -187,18 +178,14 @@ export class MaterialService {
           throw new Error('Invalid selected team member');
         }
         teamMemberForHistory = selectedTeamMember;
-
         const task = await tx.task.findUnique({ where: { id: dto.taskId }, include: { project: true } });
         if (!task) throw new Error('Task not found');
-
         const assigned = await tx.projectMaterial.findFirst({
           where: { projectId: task.projectId, materialId },
         });
         if (!assigned) throw new Error('Material not assigned to the project');
-
         const amountUsed = dto.previousLength - dto.newLength;
         if (amountUsed <= 0) throw new Error('Amount used must be positive');
-
         await tx.taskMaterial.create({
           data: {
             taskId: dto.taskId,
@@ -211,16 +198,13 @@ export class MaterialService {
         const amountAdded = dto.newLength - dto.previousLength;
         if (amountAdded <= 0) throw new Error('Amount added must be positive for restocking');
       }
-
       const material = await tx.material.findUnique({ where: { id: materialId } });
       if (!material) throw new Error('Material not found');
-
       // Update material length
       await tx.material.update({
         where: { id: materialId },
         data: { length: dto.newLength },
       });
-
       // Create history entry
       const history = await tx.materialHistory.create({
         data: {
@@ -231,7 +215,6 @@ export class MaterialService {
           taskId: dto.taskId || null,
         },
       });
-
       return history;
     });
   }
@@ -243,18 +226,43 @@ export class MaterialService {
     });
   }
 
-  async addNote(id: string, content: string, userId: string) {
+  async addNote(materialId: string, content: string, userId: string) {
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) {
+      throw new NotFoundException('Team member not found');
+    }
+    // Optional: Verify material exists and belongs to the user's team
+    const material = await this.prisma.material.findUnique({ where: { id: materialId } });
+    if (!material || material.teamId !== teamMember.teamId) {
+      throw new NotFoundException('Material not found or unauthorized');
+    }
     return this.prisma.materialNote.create({
       data: {
         content,
-        materialId: id,
-        teamMemberId: userId,
+        materialId,
+        teamMemberId: teamMember.id,
       },
     });
   }
 
   async editNote(noteId: string, content: string, userId: string) {
-    // Add auth check if needed
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) {
+      throw new NotFoundException('Team member not found');
+    }
+    const note = await this.prisma.materialNote.findUnique({
+      where: { id: noteId },
+      include: { material: true },
+    });
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+    if (note.teamMemberId !== teamMember.id && teamMember.role !== 'admin') {
+      throw new ForbiddenException('You can only edit your own notes');
+    }
+    if (note.material.teamId !== teamMember.teamId) {
+      throw new ForbiddenException('Unauthorized access to material');
+    }
     return this.prisma.materialNote.update({
       where: { id: noteId },
       data: { content },
@@ -262,7 +270,23 @@ export class MaterialService {
   }
 
   async deleteNote(noteId: string, userId: string) {
-    // Add auth check if needed
+    const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
+    if (!teamMember) {
+      throw new NotFoundException('Team member not found');
+    }
+    const note = await this.prisma.materialNote.findUnique({
+      where: { id: noteId },
+      include: { material: true },
+    });
+    if (!note) {
+      throw new NotFoundException('Note not found');
+    }
+    if (note.teamMemberId !== teamMember.id && teamMember.role !== 'admin') {
+      throw new ForbiddenException('You can only delete your own notes');
+    }
+    if (note.material.teamId !== teamMember.teamId) {
+      throw new ForbiddenException('Unauthorized access to material');
+    }
     return this.prisma.materialNote.delete({
       where: { id: noteId },
     });
@@ -287,10 +311,8 @@ export class MaterialService {
   async deleteCategory(id: string, userId: string) {
     const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
     if (!teamMember) throw new Error('Team member not found');
-
     const category = await this.prisma.materialCategory.findUnique({ where: { id } });
     if (!category || category.teamId !== teamMember.teamId) throw new Error('Category not found or unauthorized');
-
     await this.prisma.$transaction(async (tx) => {
       await tx.material.updateMany({
         where: { categoryId: id },
@@ -300,20 +322,16 @@ export class MaterialService {
         where: { id },
       });
     });
-
     return { success: true };
   }
 
   async assignProject(materialId: string, projectId: string, taskIds: string[], userId: string) {
     const teamMember = await this.prisma.teamMember.findFirst({ where: { userId } });
     if (!teamMember) throw new NotFoundException('Team member not found');
-
     const material = await this.prisma.material.findUnique({ where: { id: materialId } });
     if (!material || material.teamId !== teamMember.teamId) throw new NotFoundException('Material not found');
-
     const project = await this.prisma.project.findUnique({ where: { id: projectId } });
     if (!project || project.teamId !== teamMember.teamId) throw new NotFoundException('Project not found');
-
     return this.prisma.$transaction(async (tx) => {
       // Assign to project
       const existingProjectAssign = await tx.projectMaterial.findFirst({
@@ -324,12 +342,10 @@ export class MaterialService {
           data: { materialId, projectId },
         });
       }
-
       // Assign to tasks if provided
       for (const taskId of taskIds) {
         const task = await tx.task.findUnique({ where: { id: taskId } });
         if (!task || task.projectId !== projectId) throw new NotFoundException(`Task ${taskId} not found or not in project`);
-
         const existingTaskAssign = await tx.taskMaterial.findFirst({
           where: { materialId, taskId },
         });
@@ -339,7 +355,6 @@ export class MaterialService {
           });
         }
       }
-
       return true;
     });
   }

@@ -13,11 +13,9 @@ import TwoColumnSubtasks from '../common/TwoColumnSubtasks';
 import { useAuth } from '@clerk/clerk-react';
 import HistoryTaskDetail from './HistoryTaskDetail';
 import HistoryListOverlay from './HistoryListOverlay';
-import AssignTask from './AssignTask';
 
 interface MemberDetailProps {
   member: {
-    id: string;
     name: string;
     position?: string;
     startDate: string;
@@ -55,7 +53,6 @@ export default function MemberDetail({ member }: MemberDetailProps) {
   const [taskHistory, setTaskHistory] = useState(member.taskHistory || []);
   const [showHistoryOverlay, setShowHistoryOverlay] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
-  const [showAssignTask, setShowAssignTask] = useState(false);
   const textareaRefs = useRef<HTMLTextAreaElement[]>([]);
 
   useEffect(() => {
@@ -376,14 +373,6 @@ export default function MemberDetail({ member }: MemberDetailProps) {
     }
   };
 
-  const handleTaskAssigned = (newTask) => {
-    if (!currentTask) {
-      setCurrentTask(newTask);
-    } else {
-      setTaskHistory([...taskHistory, newTask]);
-    }
-  };
-
   const sortedPendingSubtasks = [...(task.subtasks?.filter(s => !s.completed) || [])].reverse();
 
   const sortedCompletedSubtasks = [...(task.subtasks?.filter(s => s.completed) || [])].sort((a, b) => {
@@ -620,7 +609,7 @@ export default function MemberDetail({ member }: MemberDetailProps) {
           <Typography variant="13" className="text-black italic mb-6">No task history yet.</Typography>
         )}
         <ActionButtonsRow>
-          <StyledLink onClick={() => setShowAssignTask(true)} className="text-black">
+          <StyledLink onClick={() => {}} className="text-black">
             <Typography variant="15" className="text-black">ASSIGN TASK</Typography>
           </StyledLink>
           {taskHistory.length > 10 && (
@@ -665,13 +654,6 @@ export default function MemberDetail({ member }: MemberDetailProps) {
           task={selectedTask} 
           onClose={() => setSelectedTask(null)} 
           onUpdate={handleTaskUpdate}
-        />
-      )}
-      {showAssignTask && (
-        <AssignTask 
-          member={{ id: member.id, name: member.name }} 
-          onClose={() => setShowAssignTask(false)} 
-          onAssigned={handleTaskAssigned} 
         />
       )}
     </ScrollablePanel>

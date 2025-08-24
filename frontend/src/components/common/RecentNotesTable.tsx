@@ -1,9 +1,8 @@
-// frontend/src/components/inventory/AllNotesModal.tsx
+// frontend/src/components/common/RecentNotesTable.tsx
 import React from 'react';
-import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
-import UnderlinedHeader from '../common/UnderlinedHeader';
-import Typography from '../common/Typography';
-import StyledLink from '../common/StyledLink';
+import Typography from './Typography';
+import StyledLink from './StyledLink';
+import ActionButtonsRow from './ActionButtonsRow';
 
 interface Note {
   id: string;
@@ -13,31 +12,39 @@ interface Note {
   teamMember?: { name: string; userId: string };
 }
 
-type AllNotesModalProps = {
+interface RecentNotesTableProps {
   notes: Note[];
   currentUserId: string | undefined;
   onEdit: (note: Note) => void;
   onDelete: (noteId: string) => void;
-  onClose: () => void;
-};
+  onShowAll: () => void;
+  onAdd: () => void;
+}
 
 const TIMESTAMP_PADDING_RIGHT = '4'; // Adjust this const to set the padding from the right border for the timestamp
 const NOTE_PADDING_LEFT = '4'; // Adjust this const to set the gap space from the left border for the note
 const TABLE_PADDING = 'p-2.5'; // Matches the tablePadding from MaterialDetail for consistency
 
-export default function AllNotesModal({ notes, currentUserId, onEdit, onDelete, onClose }: AllNotesModalProps) {
+export default function RecentNotesTable({
+  notes,
+  currentUserId,
+  onEdit,
+  onDelete,
+  onShowAll,
+  onAdd,
+}: RecentNotesTableProps) {
   const sortedNotes = [...notes].sort((a, b) =>
     new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
   );
+  const recentNotes = sortedNotes.slice(0, 3);
 
   return (
-    <BlurryOverlayPanel draggable={true} onClose={onClose}>
-      <UnderlinedHeader title="ALL NOTES" />
-      <div className="border border-black rounded-lg overflow-hidden mb-6" onMouseDown={(e) => e.stopPropagation()}>
-        {sortedNotes.length > 0 ? (
+    <>
+      <div className="border border-black rounded-lg overflow-hidden mb-6">
+        {recentNotes.length > 0 ? (
           <table className="w-full border-collapse bg-white">
             <tbody>
-              {sortedNotes.map((note, index) => (
+              {recentNotes.map((note, index) => (
                 <React.Fragment key={note.id}>
                   <tr>
                     <td
@@ -58,7 +65,7 @@ export default function AllNotesModal({ notes, currentUserId, onEdit, onDelete, 
                   <tr>
                     <td colSpan={2} className={`${TABLE_PADDING}`}>
                       <div className="flex items-center justify-between">
-                        <div className={`flex-1 pr-4 pl-${NOTE_PADDING_LEFT}`}>
+                        <div className={`flex-1 truncate pr-4 pl-${NOTE_PADDING_LEFT}`}>
                           <Typography variant="15" className="text-black">
                             {note.content}
                           </Typography>
@@ -89,16 +96,23 @@ export default function AllNotesModal({ notes, currentUserId, onEdit, onDelete, 
         ) : (
           <div className={`${TABLE_PADDING} bg-white text-center`}>
             <Typography variant="13" className="text-black italic">
-              No notes available.
+              No recent notes available.
             </Typography>
           </div>
         )}
       </div>
-      <div className="flex justify-center mt-6" onMouseDown={(e) => e.stopPropagation()}>
-        <StyledLink onClick={onClose} className="text-black">
-          <Typography variant="15" className="text-black">QUIT</Typography>
+      <ActionButtonsRow>
+        <StyledLink onClick={onShowAll} className="text-black">
+          <Typography variant="15" className="text-black">
+            EXPAND HISTORY
+          </Typography>
         </StyledLink>
-      </div>
-    </BlurryOverlayPanel>
+        <StyledLink onClick={onAdd} className="text-black">
+          <Typography variant="15" className="text-black">
+            ADD NOTE
+          </Typography>
+        </StyledLink>
+      </ActionButtonsRow>
+    </>
   );
 }

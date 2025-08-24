@@ -8,6 +8,8 @@ import AddNoteModal from './AddNoteModal'
 import AllNotesModal from './AllNotesModal'
 import AddQuantityModal from './AddQuantityModal'
 import AddProject from './AddProject' // ✅ Added import
+import ProjectTasksView from './ProjectTasksView'
+import ProjectHistoryOverlay from './ProjectHistoryOverlay'
 import { useUser, useAuth } from '@clerk/clerk-react'
 import ScrollablePanel from '../common/ScrollablePanel' // ✅ Use for panel + scroll
 import EmptyPanel from '../common/EmptyPanel' // ✅ Use for no-material state
@@ -16,6 +18,7 @@ import StyledLink from '../common/StyledLink'
 import UnderlinedHeader from '../common/UnderlinedHeader'
 import BlurryOverlayPanel from '../common/BlurryOverlayPanel'
 import ActionButtonsRow from '../common/ActionButtonsRow'
+import RecentNotesTable from '../common/RecentNotesTable'
 
 interface HistoryEntry {
   teamMember?: { name: string };
@@ -44,83 +47,22 @@ type MaterialDetailProps = {
     certifications?: string;
     history: HistoryEntry[];
     materialNotes: Note[];
-    assignedTo?: { project: { id: string; name: string } }[]; // For projects
+    assignedTo?: { project: { 
+      id: string; 
+      name: string;
+      progress: number;
+      deadline?: string | null;
+      startDate?: string | null;
+      completedAt?: string | null;
+      subtasks?: { id: string; name: string; completed: boolean; completedAt?: string | null }[];
+      materials?: { name: string; amountUsed: number; usedAt: string }[];
+    } }[]; // For projects
     climateChange: number;
     fossilResourceDepletion: number;
     waterScarcity: number;
     freshwaterEutrophication: number;
   };
   onRefresh: (newLength?: number) => void
-}
-
-const ProjectTasksView = ({ project, onClose }: { project: any; onClose: () => void }) => {
-  const [tasks, setTasks] = useState<any[]>([])
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null)
-  const { getToken } = useAuth()
-
-  useEffect(() => {
-    const fetchProjectTasks = async () => {
-      try {
-        const token = await getToken({ template: 'backend-access' })
-        const res = await fetch(`/api/projects/${project.id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (res.ok) {
-          const data = await res.json()
-          setTasks(data.tasks || [])
-        }
-      } catch (err) {
-        console.error('Failed to fetch project tasks:', err)
-      }
-    }
-    fetchProjectTasks()
-  }, [project.id, getToken])
-
-  const toggleSubtasks = (taskId: string) => {
-    setExpandedTaskId(expandedTaskId === taskId ? null : taskId)
-  }
-
-  return (
-    <BlurryOverlayPanel onClose={onClose}>
-      <UnderlinedHeader title={project.name.toUpperCase()} />
-      <div className="space-y-4">
-        {tasks.map((task) => (
-          <div key={task.id} className="border p-4 rounded bg-gray-50 space-y-2">
-            <StyledLink onClick={() => toggleSubtasks(task.id)} className="text-black">
-              {task.name}
-            </StyledLink>
-            <Typography variant="13" className="text-black">
-              Assigned to: {task.assignees?.map((a: any) => a.teamMember.name).join(', ') || 'Unassigned'}
-            </Typography>
-            <Typography variant="13" className="text-black">
-              Start: {task.startedAt ? new Date(task.startedAt).toLocaleDateString() : 'N/A'}
-            </Typography>
-            <Typography variant="13" className="text-black">
-              Deadline: {task.deadline ? new Date(task.deadline).toLocaleDateString() : 'N/A'}
-            </Typography>
-            {expandedTaskId === task.id && (
-              <div className="mt-2 space-y-2">
-                <Typography variant="13" weight="light" className="text-black">Top 5 Subtasks:</Typography>
-                {task.subtasks
-                  ?.sort((a: any, b: any) => a.completed - b.completed || a.name.localeCompare(b.name))
-                  .slice(0, 5)
-                  .map((sub: any, idx: number) => (
-                    <Typography key={idx} variant="13" className="text-black">
-                      {sub.name} {sub.completed ? '(Completed)' : ''}
-                    </Typography>
-                  )) || <Typography variant="13" className="text-black italic">No subtasks</Typography>}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-center mt-6">
-        <StyledLink onClick={onClose} className="text-black">
-          <Typography variant="15" className="text-black">QUIT</Typography>
-        </StyledLink>
-      </div>
-    </BlurryOverlayPanel>
-  )
 }
 
 const CIRCLE_RADIUS = 60; // Adjust this const to change the size of all circular bars at once
@@ -132,6 +74,7 @@ const METRICS_BOTTOM_MARGIN_CLASS = 'mb-10'; // Adjust this to change the space 
 const METRICS_PADDING_CLASS = 'px-22'; // Adjust this to change the distance between the left and right edges of the panel for the circular metrics, e.g., 'px-8' for more padding on sides
 const PROTOTYPE_MARGIN_BOTTOM_CLASS = 'mb-10'; // Adjust this to change the gap between "Prototype – Based on PEFCR Guidelines" and the circular metrics, e.g., 'mb-6' for larger gap
 const TEXT_VERTICAL_OFFSET = '-7px'; // Adjust this const to move the inside text higher (more negative) or lower (positive). e.g., '-4px' to move higher.
+const BOTTOM_PANEL_PADDING = 'pb-5'; // Adjust this to change the space gap between the last buttons and the end of the scrollable panel on the bottom
 
 const CircularProgress = ({ value, max, label, unit }: { value: number; max: number; label: string; unit: string }) => {
   const percentage = Math.min((value / max) * 100, 100); // Cap at 100%
@@ -189,8 +132,8 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   const [showAddModal, setShowAddModal] = useState(false)
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [selectedProject, setSelectedProject] = useState<any | null>(null)
-  const [showAllAssigned, setShowAllAssigned] = useState(false)
   const [showAddProject, setShowAddProject] = useState(false) // ✅ Added state for AddProject
+  const [showProjectHistoryOverlay, setShowProjectHistoryOverlay] = useState(false)
 
   const { user: currentUser } = useUser()
   const { getToken } = useAuth()
@@ -205,7 +148,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
 
   const assignedProjects = material.assignedTo?.map(pm => pm.project) || [];
   const sortedAssignedProjects = assignedProjects.sort((a, b) => a.name.localeCompare(b.name));
-  const visibleProjects = showAllAssigned ? sortedAssignedProjects : sortedAssignedProjects.slice(0, 10);
+  const visibleProjects = sortedAssignedProjects.slice(0, 10);
   const half = Math.ceil(visibleProjects.length / 2);
   const leftProjects = visibleProjects.slice(0, half);
   const rightProjects = visibleProjects.slice(half);
@@ -213,7 +156,7 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
   const tablePadding = 'p-2.5'
 
   return (
-    <ScrollablePanel className="space-y-12"> {/* ✅ Increased spacing for airiness */}
+    <ScrollablePanel className={`space-y-12 ${BOTTOM_PANEL_PADDING}`}> {/* ✅ Increased spacing for airiness */}
       {/* FABRIC DETAILS */}
       <div>
         <UnderlinedHeader title="FABRIC DETAILS" />
@@ -280,9 +223,9 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
           <StyledLink onClick={() => setShowAddProject(true)} className="text-black"> {/* ✅ Updated onClick */}
             <Typography variant="15" className="text-black">ADD PROJECT</Typography>
           </StyledLink>
-          <StyledLink onClick={() => setShowAllAssigned(!showAllAssigned)} className="text-black">
+          <StyledLink onClick={() => setShowProjectHistoryOverlay(true)} className="text-black">
             <Typography variant="15" className="text-black">
-              {showAllAssigned ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
+              EXPAND HISTORY
             </Typography>
           </StyledLink>
         </ActionButtonsRow>
@@ -428,64 +371,38 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
       {/* RECENT NOTES */}
       <div>
         <UnderlinedHeader title="RECENT NOTES" />
-        <Typography variant="13" className="text-black mb-4">Quantity Available: {material.length} m</Typography>
-        <div className="space-y-4"> {/* ✅ Increased spacing */}
-          {material.materialNotes?.slice(0, 3).map((note: any, i: number) => (
-            <div key={i} className="border p-4 rounded bg-gray-50 space-y-2"> {/* ✅ Increased padding */}
-              <Typography variant="13" className="text-black">
-                {note.teamMember?.name || 'Unknown'} – {new Date(note.updatedAt || note.createdAt).toLocaleString()}
-              </Typography>
-              <Typography variant="15" className="text-black">{note.content}</Typography>
-              {note.teamMember?.userId === currentUser?.id && (
-                <div className="mt-1 flex gap-4"> {/* ✅ Increased mt and gap */}
-                  <StyledLink
-                    onClick={() => {
-                      setSelectedNote(note);
-                      setShowEditModal(true);
-                    }}
-                    className="text-black text-[13px]"
-                  >
-                    Edit
-                  </StyledLink>
-                  <StyledLink
-                    onClick={async () => {
-                      if (confirm('Delete this note?')) {
-                        try {
-                          const token = await getToken({ template: 'backend-access' });
-                          const res = await fetch(`/materials/notes/${note.id}`, {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${token}` },
-                          });
-                          if (!res.ok) {
-                            const errorBody = await res.json();
-                            console.error(`[DeleteNote] Failed: Status ${res.status}, Body:`, errorBody);
-                            alert('Failed to delete');
-                          } else {
-                            console.log('[DeleteNote] Success');
-                            refreshNotes();
-                          }
-                        } catch (err) {
-                          console.error('[DeleteNote] Error:', err);
-                          alert('Error deleting');
-                        }
-                      }
-                    }}
-                    className="text-black text-[13px]"
-                  >
-                    Delete
-                  </StyledLink>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <StyledLink onClick={() => setShowAllNotes(true)} className="mt-4 text-black block">
-          Expand History
-        </StyledLink>
-        <StyledLink onClick={() => setShowAddModal(true)} className="mt-4 ml-0 text-black block">
-          Add Note
-        </StyledLink>
-
+        <RecentNotesTable
+          notes={material.materialNotes || []}
+          currentUserId={currentUser?.id}
+          onEdit={(note) => {
+            setSelectedNote(note);
+            setShowEditModal(true);
+          }}
+          onDelete={async (noteId) => {
+            if (confirm('Delete this note?')) {
+              try {
+                const token = await getToken({ template: 'backend-access' });
+                const res = await fetch(`/materials/notes/${noteId}`, {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (!res.ok) {
+                  const errorBody = await res.json();
+                  console.error(`[DeleteNote] Failed: Status ${res.status}, Body:`, errorBody);
+                  alert('Failed to delete');
+                } else {
+                  console.log('[DeleteNote] Success');
+                  refreshNotes();
+                }
+              } catch (err) {
+                console.error('[DeleteNote] Error:', err);
+                alert('Error deleting');
+              }
+            }
+          }}
+          onShowAll={() => setShowAllNotes(true)}
+          onAdd={() => setShowAddModal(true)}
+        />
         {showEditModal && selectedNote && (
           <EditNoteModal note={selectedNote} onClose={() => setShowEditModal(false)} onSuccess={() => { setShowEditModal(false); refreshNotes(); }} />
         )}
@@ -495,9 +412,50 @@ export default function MaterialDetail({ material, onRefresh }: MaterialDetailPr
         )}
 
         {showAllNotes && (
-          <AllNotesModal notes={material.materialNotes} onClose={() => setShowAllNotes(false)} />
+          <AllNotesModal
+            notes={material.materialNotes || []}
+            currentUserId={currentUser?.id}
+            onEdit={(note) => {
+              setSelectedNote(note);
+              setShowEditModal(true);
+            }}
+            onDelete={async (noteId) => {
+              if (confirm('Delete this note?')) {
+                try {
+                  const token = await getToken({ template: 'backend-access' });
+                  const res = await fetch(`/materials/notes/${noteId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  if (!res.ok) {
+                    const errorBody = await res.json();
+                    console.error(`[DeleteNote] Failed: Status ${res.status}, Body:`, errorBody);
+                    alert('Failed to delete');
+                  } else {
+                    console.log('[DeleteNote] Success');
+                    refreshNotes();
+                  }
+                } catch (err) {
+                  console.error('[DeleteNote] Error:', err);
+                  alert('Error deleting');
+                }
+              }
+            }}
+            onClose={() => setShowAllNotes(false)}
+          />
         )}
       </div>
+
+      {showProjectHistoryOverlay && (
+        <ProjectHistoryOverlay
+          projectHistory={assignedProjects}
+          onClose={() => setShowProjectHistoryOverlay(false)}
+          onSelectProject={(proj) => {
+            setSelectedProject(proj);
+          }}
+          onAddProject={() => setShowAddProject(true)}
+        />
+      )}
 
       {selectedProject && (
         <ProjectTasksView project={selectedProject} onClose={() => setSelectedProject(null)} />

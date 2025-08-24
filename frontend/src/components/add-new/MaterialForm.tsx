@@ -134,7 +134,7 @@ export default function MaterialForm({ onSuccess, onCancel }: MaterialFormProps)
           <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files?.[0] || null)} className="hidden" />
         </label>
       </div>
-      <SmartInput as="select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} required>
+      <SmartInput as="select" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} required className="w-full text-center appearance-none border border-gray-300 rounded-full px-4 py-2 text-black focus:outline-none focus:border-black focus:shadow-[0_0_10px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.6)]">
         <option value="">SELECT CATEGORY</option>
         {categories.length === 0 ? (
           <option disabled>NO CATEGORIES AVAILABLE</option>

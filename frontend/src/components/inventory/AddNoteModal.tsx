@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import Typography from '../common/Typography';
+import UnderlinedHeader from '../common/UnderlinedHeader';
+import ActionButtonsRow from '../common/ActionButtonsRow';
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
+import StyledLink from '../common/StyledLink';
+import SmartInput from '../common/SmartInput';
 
 type AddNoteModalProps = {
   materialId: string;
@@ -10,11 +16,18 @@ type AddNoteModalProps = {
 export default function AddNoteModal({ materialId, onClose, onSuccess }: AddNoteModalProps) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
-  const { getToken } = useAuth();  // ✅ Moved to top level
+  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   const handleSubmit = async () => {
-    if (!content.trim()) return;
+    if (!content.trim()) {
+      setError('Please enter a note.');
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
       const token = await getToken({ template: 'backend-access' });
       const res = await fetch(`/api/materials/${materialId}/notes`, {
@@ -28,37 +41,43 @@ export default function AddNoteModal({ materialId, onClose, onSuccess }: AddNote
       if (!res.ok) {
         const errorBody = await res.json();
         console.error(`[AddNote] Failed: Status ${res.status}, Body:`, errorBody);
-        alert('Failed to add note');
+        throw new Error(errorBody.message || 'Failed to add note');
       } else {
         console.log('[AddNote] Success');
         onSuccess();
+        onClose();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error adding note:', err);
-      alert('Error adding note');
+      setError(err.message || 'Error adding note');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md w-96">
-        <h2 className="text-lg font-bold mb-4">Add Note</h2>
-        <textarea
-          className="w-full p-2 border rounded mb-4"
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+      <UnderlinedHeader title="ADD NOTE" />
+      <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
+        <SmartInput
+          as="textarea"
+          rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Write your note..."
+          className="w-full bg-white border border-black p-2"
+          disabled={loading}
         />
-        <div className="flex justify-end gap-2">
-          <button className="px-4 py-2 border rounded" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleSubmit} disabled={loading}>
-            Add
-          </button>
-        </div>
+        {error && <Typography variant="13" className="text-red-600">{error}</Typography>}
       </div>
-    </div>
+      <ActionButtonsRow>
+        <StyledLink onClick={loading ? () => {} : handleSubmit} className="text-black">
+          <Typography variant="15" className="text-black">{loading ? 'Saving...' : 'SAVE'}</Typography>
+        </StyledLink>
+        <StyledLink onClick={loading ? () => {} : onClose} className="text-black">
+          <Typography variant="15" className="text-black">CANCEL</Typography>
+        </StyledLink>
+      </ActionButtonsRow>
+    </BlurryOverlayPanel>
   );
 }

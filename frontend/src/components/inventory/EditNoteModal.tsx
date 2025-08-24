@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
+import Typography from '../common/Typography';
+import UnderlinedHeader from '../common/UnderlinedHeader';
+import ActionButtonsRow from '../common/ActionButtonsRow';
+import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
+import StyledLink from '../common/StyledLink';
+import SmartInput from '../common/SmartInput';
 
 type EditNoteModalProps = {
   note: any;
@@ -10,10 +16,18 @@ type EditNoteModalProps = {
 export default function EditNoteModal({ note, onClose, onSuccess }: EditNoteModalProps) {
   const [content, setContent] = useState(note.content);
   const [loading, setLoading] = useState(false);
-  const { getToken } = useAuth();  // ✅ Moved to top level
+  const [error, setError] = useState<string | null>(null);
+  const { getToken } = useAuth();
 
   const handleSubmit = async () => {
+    if (!content.trim()) {
+      setError('Please enter a note.');
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
       const token = await getToken({ template: 'backend-access' });
       const res = await fetch(`/api/materials/notes/${note.id}`, {
@@ -27,36 +41,43 @@ export default function EditNoteModal({ note, onClose, onSuccess }: EditNoteModa
       if (!res.ok) {
         const errorBody = await res.json();
         console.error(`[EditNote] Failed: Status ${res.status}, Body:`, errorBody);
-        alert('Failed to update note');
+        throw new Error(errorBody.message || 'Failed to update note');
       } else {
         console.log('[EditNote] Success');
         onSuccess();
+        onClose();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[EditNote] Error:', err);
-      alert('Error updating note');
+      setError(err.message || 'Error updating note');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md w-96">
-        <h2 className="text-lg font-bold mb-4">Edit Note</h2>
-        <textarea
-          className="w-full p-2 border rounded mb-4"
+    <BlurryOverlayPanel draggable={true} onClose={onClose}>
+      <UnderlinedHeader title="EDIT NOTE" />
+      <div className="space-y-4 mb-6" onMouseDown={(e) => e.stopPropagation()}>
+        <SmartInput
+          as="textarea"
+          rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
+          placeholder="Edit your note..."
+          className="w-full bg-white border border-black p-2"
+          disabled={loading}
         />
-        <div className="flex justify-end gap-2">
-          <button className="px-4 py-2 border rounded" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleSubmit} disabled={loading}>
-            Save
-          </button>
-        </div>
+        {error && <Typography variant="13" className="text-red-600">{error}</Typography>}
       </div>
-    </div>
+      <ActionButtonsRow>
+        <StyledLink onClick={loading ? () => {} : handleSubmit} className="text-black">
+          <Typography variant="15" className="text-black">{loading ? 'Saving...' : 'SAVE'}</Typography>
+        </StyledLink>
+        <StyledLink onClick={loading ? () => {} : onClose} className="text-black">
+          <Typography variant="15" className="text-black">CANCEL</Typography>
+        </StyledLink>
+      </ActionButtonsRow>
+    </BlurryOverlayPanel>
   );
-}``
+}

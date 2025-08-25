@@ -4,9 +4,10 @@ import { useAuth } from '@clerk/clerk-react';
 import BlurryOverlayPanel from '../common/BlurryOverlayPanel';
 import Typography from '../common/Typography';
 import UnderlinedHeader from '../common/UnderlinedHeader';
-import ScrollableContainer from '../common/ScrollableContainer';
+import ListContainer from '../common/ListContainer';
+import SubtaskItem from '../common/SubtaskItem';
 import StyledLink from '../common/StyledLink';
-import ActionButtonsRow from '../common/ActionButtonsRow';
+import SmartInput from '../common/SmartInput';
 
 interface Material {
   id: string;
@@ -29,9 +30,15 @@ interface AddCategoryPanelProps {
 
 export default function AddCategoryPanel({ onClose, onCategoryAdded, materials, onMaterialsUpdated }: AddCategoryPanelProps) {
   const [name, setName] = useState('');
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const { getToken } = useAuth();
+
+  const customInnerStyle = {
+    marginTop: '0px',
+    marginLeft: '0',
+    overflow: 'visible',
+  };
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -81,52 +88,57 @@ export default function AddCategoryPanel({ onClose, onCategoryAdded, materials, 
   };
 
   const handleToggleMaterial = (id: string) => {
-    setSelectedMaterials((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+    setSelectedMaterials((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
   };
 
   return (
-    <BlurryOverlayPanel onClose={onClose}>
+    <BlurryOverlayPanel draggable={true} innerStyle={customInnerStyle} onClose={onClose}>
       <UnderlinedHeader title="ADD NEW CATEGORY" />
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Category name"
-        className="border border-gray-300 rounded px-3 py-2 text-black placeholder:text-gray-500 focus:outline-none focus:border-black w-full mb-6 mt-6"
-      />
-      <Typography variant="15" className="text-black mb-4">Add existing materials (optional)</Typography>
-      <ScrollableContainer className="max-h-40 mb-6">
-        {materials.map((mat) => (
-          <div 
-            key={mat.id} 
-            className="flex items-center cursor-pointer mb-4"
-            onClick={() => handleToggleMaterial(mat.id)}
-          >
-            <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
-              {selectedMaterials.includes(mat.id) && <div className="w-2 h-2 bg-[#D7FAEA] rounded-full"></div>}
-            </div>
-            <Typography variant="13" className="text-black">
-              {mat.name}
-            </Typography>
-          </div>
+      <div className="mb-10">
+        <Typography variant="15" className="text-black mb-2">Enter Category Name:</Typography>
+        <SmartInput
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="CATEGORY NAME"
+          className="w-full uppercase text-left"
+        />
+      </div>
+
+      <UnderlinedHeader title="ADD EXISTING MATERIALS (OPTIONAL)" />
+      <ListContainer
+        className="mb-6 max-h-60 overflow-y-auto"
+        items={materials.map((mat) => (
+          <SubtaskItem
+            key={mat.id}
+            id={mat.id}
+            name={mat.name}
+            completed={selectedMaterials.has(mat.id)}
+            showDelete={false}
+            showStatus={false}
+            onToggle={() => handleToggleMaterial(mat.id)}
+          />
         ))}
-        {materials.length === 0 && (
-          <Typography variant="13" className="text-black italic">
-            No materials available.
-          </Typography>
-        )}
-      </ScrollableContainer>
-      {error && <Typography variant="13" className="text-red-500 mb-4">{error}</Typography>}
-      <ActionButtonsRow>
+        emptyMessage="No materials available."
+      />
+
+      <div className="flex justify-between">
         <StyledLink onClick={handleSubmit} className="text-black">
           <Typography variant="15" className="text-black">ADD</Typography>
         </StyledLink>
         <StyledLink onClick={onClose} className="text-black">
           <Typography variant="15" className="text-black">CANCEL</Typography>
         </StyledLink>
-      </ActionButtonsRow>
+      </div>
+
+      {error && <Typography variant="13" className="text-red-500 mt-4">{error}</Typography>}
     </BlurryOverlayPanel>
   );
 }

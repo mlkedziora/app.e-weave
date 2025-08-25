@@ -1,15 +1,14 @@
-// frontend/src/components/add-new/MaterialSelector.tsx
+// frontend/src/components/projects/ProjectCategories.tsx
 import { useState, useEffect, useRef, type TransitionEvent } from 'react'
-import SelectableMaterialList from './SelectableMaterialList'
+import { useAuth } from '@clerk/clerk-react'
+import ProjectList from './ProjectList'
 import Typography from '../common/Typography'
 
-type Material = {
+type Project = {
   id: string
   name: string
   category: string
-  length: number
-  eScore: number
-  imageUrl?: string
+  progress: number
 }
 
 type Category = {
@@ -18,14 +17,14 @@ type Category = {
 }
 
 type Props = {
-  materials: Material[]
-  selected: string[]
-  onSelect: (id: string) => void
+  onProjectClick: (id: string) => void
+  selectedId: string | null
+  projects: Project[]
 }
 
-export default function MaterialSelector({ materials, selected, onSelect }: Props) {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [activeCategory, setActiveCategory] = useState<string>('')
+export default function ProjectCategories({ onProjectClick, selectedId, projects }: Props) {
+  const { getToken } = useAuth()
+  const [activeCategory, setActiveCategory] = useState<string>('IN-PROGRESS')
   const [error, setError] = useState<string | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -183,26 +182,24 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
     if (!isSearchOpen) setCloseShiftPx(0)
   }
 
+  const effectiveCategories: Category[] = [
+    { id: 'in-progress', name: 'IN-PROGRESS' },
+    { id: 'completed', name: 'COMPLETED' },
+  ]
+
   useEffect(() => {
-    const uniqueCategories = [...new Set(materials.map(m => m.category).filter(c => c !== ''))]
-    const cats: Category[] = uniqueCategories.map(name => ({ id: name, name }))
-    const hasUncategorized = materials.some(m => m.category === '')
-    const effectiveCategories: Category[] = [
-      ...cats,
-      ...(hasUncategorized ? [{ id: 'uncategorized', name: 'Uncategorized' }] : []),
-    ]
-    setCategories(effectiveCategories)
-    if (effectiveCategories.length > 0 && !effectiveCategories.some(cat => cat.name === activeCategory)) {
+    if (effectiveCategories.length > 0 && !effectiveCategories.some((cat) => cat.name === activeCategory)) {
       setActiveCategory(effectiveCategories[0].name)
     }
-  }, [materials, activeCategory])
+  }, [effectiveCategories, activeCategory])
 
-  const activeIndex = categories.findIndex(cat => cat.name === activeCategory)
-  const categoryFiltered = activeCategory === 'Uncategorized'
-    ? materials.filter(m => m.category === '')
-    : materials.filter(m => m.category === activeCategory)
-  const searchFiltered = materials.filter(m => m.name.toLowerCase().includes(searchValue.toLowerCase()))
-  const filtered = isSearchOpen ? searchFiltered : categoryFiltered
+  const activeIndex = effectiveCategories.findIndex(cat => cat.name === activeCategory)
+  const categoryFiltered = activeCategory === 'IN-PROGRESS'
+    ? projects.filter(p => p.progress < 100)
+    : projects.filter(p => p.progress >= 100)
+  const filtered = searchValue
+    ? categoryFiltered.filter(p => p.name.toLowerCase().includes(searchValue.toLowerCase()))
+    : categoryFiltered
 
   // ======= CATEGORY STRIP TUNABLES =======
   const SHEET_HEIGHT_PX   = 36   // header height
@@ -214,10 +211,9 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
   const TAB_PADDING_RIGHT = '3rem'
   const SCROLL_AMOUNT = 200
   const utilityBg = '#7A7A7A'
-  const MATERIAL_LIST_TOP_GAP_PX = 16
   // =======================================
 
-  const maxDist = Math.max(activeIndex, categories.length - 1 - activeIndex)
+  const maxDist = Math.max(activeIndex, effectiveCategories.length - 1 - activeIndex)
   const getBgForDist = (dist: number, maxDist: number) => {
     if (maxDist === 0) return '#FFFFFF'
     const factor = dist / maxDist
@@ -248,7 +244,7 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
     const ref = scrollRef.current
     ref?.addEventListener('scroll', updateScrollButtons)
     return () => ref?.removeEventListener('scroll', updateScrollButtons)
-  }, [categories])
+  }, [effectiveCategories])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -270,18 +266,9 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
   const contentOpacity = searchPhase === 'closing' ? 0 : 1
 
   return (
-    <div 
-      className="w-full flex flex-col overflow-hidden"
-      style={{ 
-        '--progress-bar-height': '0.4rem',
-        '--progress-fill-height': '0.2rem',
-        '--progress-bar-width': '100%',
-        '--progress-bg-color': '#d4d4d4',
-        '--progress-padding': '0.155rem',
-      } as React.CSSProperties}
-    >
-      {/* Full-width header with pseudo extension to avoid clipping */}
-      <div className="relative border-b border-gray-300 shrink-0 before:content-[''] before:absolute before:inset-y-0 before:left-[-1.5rem] before:w-[calc(100%+3rem)] before:bg-[#7A7A7A] before:-z-10 before:rounded-tl-[0.5rem] before:rounded-tr-[12px]" ref={headerRef}>
+    <div className="w-full bg-white p-4 rounded-lg shadow-md text-black h-full flex flex-col overflow-hidden">
+      {/* Header (rounded + clipped) */}
+      <div className="-mx-4 -mt-4 border-b border-gray-300 shrink-0 rounded-t-lg" ref={headerRef}>
         <div className="relative flex items-stretch" style={{ height: SHEET_HEIGHT_PX }}>
           {/* Category strip */}
           <div
@@ -300,12 +287,12 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
               [data-hide-scrollbar]::-webkit-scrollbar { display: none; }
             `}</style>
             <ul className="relative flex items-stretch" data-hide-scrollbar>
-              {categories.map((cat, index) => {
+              {effectiveCategories.map((cat, index) => {
                 const dist = Math.abs(index - activeIndex)
                 const bg = getBgForDist(dist, maxDist)
                 const textClass = isDarkForDist(dist, maxDist) ? 'text-white' : 'text-black'
                 const netLeft = index === 0 ? 0 : (SHEET_GAP_PX - SHEET_OVERLAP_PX)
-                const zIndex = categories.length - index
+                const zIndex = effectiveCategories.length - index
 
                 return (
                   <li
@@ -456,7 +443,8 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
                 </span>
               </button>
 
-              {/* White search bar */}
+              {/* White search bar: wrapper shrinks from LEFT; inner pill keeps both rounded ends.
+                  It fully hides right before width hits zero so the overlay never “pushes” it. */}
               <div
                 className="relative ml-auto"
                 style={{
@@ -467,12 +455,12 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
                   marginRight: DARK_RIGHT_PADDING_PX,
                 }}
               >
-                {/* Inner pill with rounded caps */}
+                {/* Inner pill with rounded caps; hidden near the end of close */}
                 <div
                   className="absolute inset-y-0 left-0"
                   style={{
                     display: isBarHidden ? 'none' : 'flex',
-                    right: innerRightPx,
+                    right: innerRightPx, // 0 per your setting; keeps rounded right end
                     transition: `right ${searchBarMs}ms ${SEARCH_EASE}, opacity ${SEARCH_BAR_FADE_MS}ms ${SEARCH_EASE}`,
                     transitionDelay: `0ms, ${fadeDelayMs}ms`,
                     borderRadius: SEARCH_BAR_RADIUS_PX,
@@ -480,7 +468,7 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
                     boxShadow: '0 0 10px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6)',
                     alignItems: 'center',
                     paddingLeft: 16,
-                    paddingRight: 40,
+                    paddingRight: 40, // space for the right-side icon
                     opacity: contentOpacity,
                     pointerEvents: 'auto',
                   }}
@@ -493,9 +481,9 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
                     className="w-full text-[13px] placeholder:text-[13px] text-black placeholder:text-black outline-none"
                     style={{
                       height: '100%',
-                      backgroundColor: 'transparent',
+                      backgroundColor: 'transparent', // pill provides the white background
                       border: 0,
-                      padding: 0,
+                      padding: 0, // padding handled by pill
                     }}
                   />
                   {/* black search icon inside the white bar */}
@@ -520,7 +508,7 @@ export default function MaterialSelector({ materials, selected, onSelect }: Prop
         </div>
       </div>
 
-      <SelectableMaterialList materials={filtered} selected={selected} onSelect={onSelect} className="w-full flex-1" style={{ paddingTop: `${MATERIAL_LIST_TOP_GAP_PX}px`, paddingLeft: 0, paddingRight: 0 }} />
+      <ProjectList projects={filtered} onProjectClick={onProjectClick} selectedId={selectedId} className="flex-1" />
     </div>
   )
 }

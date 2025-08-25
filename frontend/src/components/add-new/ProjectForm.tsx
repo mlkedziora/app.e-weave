@@ -14,6 +14,9 @@ interface Material {
   id: string;
   name: string;
   category: string;
+  length: number;
+  eScore: number;
+  imageUrl?: string;
 }
 interface Task {
   name: string;
@@ -216,7 +219,7 @@ export default function ProjectForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <form onSubmit={handleSubmit} className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
       {error && <div className="col-span-2 text-red-500">{error}</div>}
 
       <div className="md:col-span-2 flex flex-col items-center">
@@ -238,10 +241,8 @@ export default function ProjectForm() {
       <SmartInput value={startDate} onChange={(e) => setStartDate(e.target.value)} placeholder="START DATE" type="text" />
       <SmartInput value={deadline} onChange={(e) => setDeadline(e.target.value)} placeholder="DEADLINE" type="text" />
 
-      {/* HEADER FLUSH TO CARD EDGES */}
-      <div className="col-span-2 -mx-4">
-        <UnderlinedHeader title="TEAM & MATERIALS" />
-      </div>
+      {/* HEADER FLUSH TO CARD EDGES — no extra wrapper; let UnderlinedHeader's -ml-6 handle offset */}
+      <UnderlinedHeader title="TEAM & MATERIALS" className="col-span-2" />
 
       {/* SINGLE BOX -> DROPDOWN FOR MEMBERS */}
       <div className="col-span-2">
@@ -249,7 +250,7 @@ export default function ProjectForm() {
       </div>
 
       {/* MATERIAL CATEGORIES ON THEIR OWN LINE; SELECTOR HANDLES FULL-WIDTH HEADER */}
-      <div className="col-span-2 mt-8">
+      <div className="col-span-2 mt-6">
         <MaterialSelector
           materials={materials}
           selected={materialIds}

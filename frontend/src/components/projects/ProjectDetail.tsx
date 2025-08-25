@@ -1,4 +1,4 @@
-// frontend/src/components/projects/ProjectDetail.tsx
+// Updated frontend/src/components/projects/ProjectDetail.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import ScrollablePanel from '../common/ScrollablePanel'
@@ -9,9 +9,10 @@ import ActionButtonsRow from '../common/ActionButtonsRow'
 import RecentNotesTable from '../common/RecentNotesTable'
 import ProjectMaterialCategory from './ProjectMaterialCategory'
 import TaskDetail from './TaskDetail';
-import AddNoteModal from '../notes/AddNoteModal'; // Import from shared
-import EditNoteModal from '../notes/EditNoteModal'; // Import from shared
-import AllNotesModal from '../notes/AllNotesModal'; // Import from shared
+import AddNoteModal from '../notes/AddNoteModal';
+import EditNoteModal from '../notes/EditNoteModal';
+import AllNotesModal from '../notes/AllNotesModal';
+import ProjectAddMaterialsModal from './ProjectAddMaterialsModal'; // New import
 
 interface TaskAssignee {
   teamMember: {
@@ -141,11 +142,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [newAssigneeId, setNewAssigneeId] = useState('')
   const [newSubtasks, setNewSubtasks] = useState<string[]>([])
   const [newMemberIds, setNewMemberIds] = useState<string[]>([])
-  const [activeAddCategory, setActiveAddCategory] = useState('Fabrics')
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([])
-  const [materialSearch, setMaterialSearch] = useState('')
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]) // No longer needed here
+  const [materialSearch, setMaterialSearch] = useState('') // No longer needed here
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const allCategories = ['Fabrics', 'Other']; // Assuming based on context; adjust as needed
+  const allCategories = [...new Set(allMaterials.map(m => m.category))].filter(Boolean); // Dynamic categories from allMaterials
 
   const fetchProjectDetails = async () => {
     setError(null);
@@ -316,14 +316,8 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     }
   }
 
-  const toggleMaterialSelect = (id: string) => {
-    setSelectedMaterialIds((prev) =>
-      prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
-    )
-  }
-
-  const handleAddMaterials = async () => {
-    if (!selectedMaterialIds.length) return
+  const handleAddMaterials = async (selectedIds: string[]) => {
+    if (!selectedIds.length) return
     try {
       const token = await getToken({ template: 'backend-access' })
       const res = await fetch(`/api/projects/${project.id}/materials`, {
@@ -332,12 +326,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ materialIds: selectedMaterialIds }),
+        body: JSON.stringify({ materialIds: selectedIds }),
       })
       if (res.ok) {
         fetchProjectDetails()
-        setSelectedMaterialIds([])
-        setMaterialSearch('')
         setShowAddMaterialForm(false)
       } else {
         alert('Failed to add materials')
@@ -613,51 +605,13 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       />
 
       {showAddMaterialForm && (
-        <div className="mt-4 p-4 border rounded">
-          <input
-            type="text"
-            placeholder="Search materials"
-            value={materialSearch}
-            onChange={(e) => setMaterialSearch(e.target.value)}
-            className="border border-gray-300 rounded px-3 py-2 mb-4 w-full text-black"
-          />
-          <div className="flex space-x-2 mb-4">
-            {allCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setActiveAddCategory(category)}
-                className={`text-sm font-medium px-4 py-2 rounded-t-md transition-all ${
-                  activeAddCategory === category ? 'bg-white text-black' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {category.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-4">
-            {allMaterials
-              .filter(
-                (m) =>
-                  m.category === activeAddCategory &&
-                  !project.materials.some((pm) => pm.id === m.id) &&
-                  m.name.toLowerCase().includes(materialSearch.toLowerCase())
-              )
-              .map((m) => (
-                <div key={m.id} className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={selectedMaterialIds.includes(m.id)}
-                    onChange={() => toggleMaterialSelect(m.id)}
-                    className="mr-2"
-                  />
-                  <span>{m.name} (Quantity: {m.length}m, E-Score: {m.eScore})</span>
-                </div>
-              ))}
-          </div>
-          <button onClick={handleAddMaterials} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-            Add Selected Materials
-          </button>
-        </div>
+        <ProjectAddMaterialsModal
+          allMaterials={allMaterials}
+          assignedMaterialIds={project.materials.map(m => m.id)}
+          categories={allCategories}
+          onClose={() => setShowAddMaterialForm(false)}
+          onAdd={handleAddMaterials}
+        />
       )}
 
       {/* COMPLETION FORECAST */}

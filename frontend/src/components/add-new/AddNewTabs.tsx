@@ -73,11 +73,10 @@ export default function AddNewTabs() {
 
   return (
     <div
-      className="w-full bg-white p-4 rounded-lg shadow-md text-black max-h-full flex flex-col"
-      style={{ ['--card-pad' as any]: '1rem' }} // 👈 expose card padding if you want to use CSS vars later
+      className="w-full bg-white rounded-lg shadow-md text-black max-h-full flex flex-col"
     >
       {/* Header (rounded + clipped) */}
-      <div className="-mx-4 -mt-4 border-b border-gray-300 shrink-0 rounded-t-lg">
+      <div className="border-b border-gray-300 shrink-0 rounded-t-lg">
         <div className="relative flex items-stretch" style={{ height: SHEET_HEIGHT_PX }}>
           {/* Category strip */}
           <div
@@ -134,8 +133,8 @@ export default function AddNewTabs() {
         </div>
       </div>
 
-      {/* ⬇️ Ensure no extra inner padding so form sections can truly full-bleed */}
-      <ScrollableContainer className="space-y-6 overflow-auto p-0">
+      {/* ⬇️ Inner padding for content */}
+      <ScrollableContainer usePadding={true} className="space-y-6">
         {renderForm()}
       </ScrollableContainer>
     </div>

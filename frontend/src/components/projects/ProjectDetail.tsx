@@ -13,6 +13,7 @@ import AddNoteModal from '../notes/AddNoteModal';
 import EditNoteModal from '../notes/EditNoteModal';
 import AllNotesModal from '../notes/AllNotesModal';
 import ProjectAddMaterialsModal from './ProjectAddMaterialsModal'; // New import
+import ProjectInventoryModal from './ProjectInventoryModal'; // New import for inventory modal
 
 interface TaskAssignee {
   teamMember: {
@@ -125,7 +126,8 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [error, setError] = useState<string | null>(null)
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [showAllMembers, setShowAllMembers] = useState(false)
-  const [showAllMaterials, setShowAllMaterials] = useState(false)
+  const [showInventoryModal, setShowInventoryModal] = useState(false)
+  const [initialMousePosition, setInitialMousePosition] = useState<{x: number; y: number} | null>(null);
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -599,8 +601,10 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
       {/* ASSIGNED MATERIALS */}
       <ProjectMaterialCategory 
         materials={project.materials} 
-        showAll={showAllMaterials} 
-        setShowAll={setShowAllMaterials} 
+        onExpand={(e) => {
+          setInitialMousePosition({x: e.clientX, y: e.clientY});
+          setShowInventoryModal(true);
+        }} 
         onAdd={() => setShowAddMaterialForm(true)} 
       />
 
@@ -608,9 +612,16 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
         <ProjectAddMaterialsModal
           allMaterials={allMaterials}
           assignedMaterialIds={project.materials.map(m => m.id)}
-          categories={allCategories}
           onClose={() => setShowAddMaterialForm(false)}
           onAdd={handleAddMaterials}
+        />
+      )}
+
+      {showInventoryModal && (
+        <ProjectInventoryModal
+          materials={project.materials}
+          onClose={() => setShowInventoryModal(false)}
+          initialMousePosition={initialMousePosition || undefined}
         />
       )}
 

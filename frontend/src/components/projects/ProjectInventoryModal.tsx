@@ -1,4 +1,4 @@
-// frontend/src/components/projects/ProjectAddMaterialsModal.tsx
+// frontend/src/components/projects/ProjectInventoryModal.tsx
 import React, { useState, useEffect, useRef, type TransitionEvent, type MouseEvent } from 'react';
 import Typography from '../common/Typography';
 import ActionButtonsRow from '../common/ActionButtonsRow';
@@ -14,24 +14,18 @@ interface Material {
   imageUrl?: string;
 }
 
-type ProjectAddMaterialsModalProps = {
-  allMaterials: Material[];
-  assignedMaterialIds: string[];
+type ProjectInventoryModalProps = {
+  materials: Material[];
   onClose: () => void;
-  onAdd: (selectedIds: string[]) => void;
   initialMousePosition?: { x: number; y: number };
 };
 
-export default function ProjectAddMaterialsModal({
-  allMaterials,
-  assignedMaterialIds,
+export default function ProjectInventoryModal({
+  materials,
   onClose,
-  onAdd,
   initialMousePosition,
-}: ProjectAddMaterialsModalProps) {
+}: ProjectInventoryModalProps) {
   const [activeCategory, setActiveCategory] = useState<string>('');
-  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const searchIconRef = useRef<HTMLImageElement>(null);
@@ -188,9 +182,9 @@ export default function ProjectAddMaterialsModal({
   };
 
   // ================== DATA FETCH ==================
-  // No fetch, use allMaterials
-  const hasUncategorized = allMaterials.some((m) => m.category === '');
-  const realCategories = [...new Set(allMaterials.map((m) => m.category).filter(Boolean))];
+  // No fetch, use materials
+  const hasUncategorized = materials.some((m) => m.category === '');
+  const realCategories = [...new Set(materials.map((m) => m.category).filter(Boolean))];
   const effectiveCategories: string[] = [
     ...realCategories,
     ...(hasUncategorized ? ['Uncategorized'] : []),
@@ -202,11 +196,10 @@ export default function ProjectAddMaterialsModal({
     }
   }, [effectiveCategories, activeCategory]);
 
-  const filtered = allMaterials.filter((m) => {
+  const filtered = materials.filter((m) => {
     const catMatch = activeCategory === 'Uncategorized' ? m.category === '' : m.category === activeCategory;
     const nameMatch = m.name.toLowerCase().includes(searchValue.toLowerCase());
-    const notAssigned = !assignedMaterialIds.includes(m.id);
-    return catMatch && nameMatch && notAssigned;
+    return catMatch && nameMatch;
   });
 
   // ======= CATEGORY STRIP TUNABLES =======
@@ -279,17 +272,6 @@ export default function ProjectAddMaterialsModal({
     if (percent < 30) return '#FFE4C4'; // Pale beige
     if (percent < 70) return '#D7FAEA'; // Pale blue
     return '#ceffceff'; // Pale green
-  };
-
-  const toggleMaterialSelect = (id: string) => {
-    setSelectedMaterialIds((prev) =>
-      prev.includes(id) ? prev.filter((mid) => mid !== id) : [...prev, id]
-    );
-  };
-
-  const handleSubmit = () => {
-    onAdd(selectedMaterialIds);
-    onClose();
   };
 
   // Hardcoded BlurryOverlayPanel logic, with draggable and backdrop blur
@@ -653,12 +635,10 @@ export default function ProjectAddMaterialsModal({
             {filtered.length > 0 ? (
               filtered.map((material) => {
                 const percent = material.eScore;
-                const isSelected = selectedMaterialIds.includes(material.id);
                 return (
-                  <button
+                  <div
                     key={material.id}
-                    onClick={() => toggleMaterialSelect(material.id)}
-                    className={`w-full text-left cursor-pointer p-4 ${isSelected ? 'bg-gray-200' : 'hover:bg-gray-50'}`}
+                    className="w-full text-left p-4 hover:bg-gray-50"
                   >
                     <div className="flex items-center space-x-4">
                       <img
@@ -695,20 +675,17 @@ export default function ProjectAddMaterialsModal({
                         {percent}%
                       </Typography>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             ) : (
               <Typography variant="13" weight="regular" className="text-black italic text-center p-4">
-                No materials available.
+                No materials in inventory.
               </Typography>
             )}
             <ActionButtonsRow>
-              <StyledLink onClick={handleSubmit} className="text-black">
-                <Typography variant="15" className="text-black">SAVE</Typography>
-              </StyledLink>
               <StyledLink onClick={onClose} className="text-black">
-                <Typography variant="15" className="text-black">CANCEL</Typography>
+                <Typography variant="15" className="text-black">CLOSE</Typography>
               </StyledLink>
             </ActionButtonsRow>
           </ScrollablePanel>

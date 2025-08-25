@@ -1,5 +1,5 @@
 // frontend/src/components/projects/ProjectMaterialCategory.tsx
-import { useEffect, useState, useRef, type TransitionEvent } from 'react'
+import { useEffect, useState, useRef, type TransitionEvent, type MouseEvent } from 'react'
 import Typography from '../common/Typography'
 import StyledLink from '../common/StyledLink'
 import ActionButtonsRow from '../common/ActionButtonsRow'
@@ -21,16 +21,13 @@ type Material = {
 
 type Props = {
   materials: Material[]
-  showAll: boolean
-  setShowAll: (b: boolean) => void
+  onExpand: (e: MouseEvent) => void
   onAdd: () => void
 }
 
-const allCategories = ['Fabrics', 'Trims', 'Fusings']
-
 const MATERIALS_GAP_CLASS = 'mt-6';
 
-export default function ProjectMaterialCategory({ materials, showAll, setShowAll, onAdd }: Props) {
+export default function ProjectMaterialCategory({ materials, onExpand, onAdd }: Props) {
   // ======= SEARCH + LAYOUT TUNABLES =======
   const SEARCH_ANIM_MS = 1000 // grey overlay duration (reference speed)
 
@@ -108,11 +105,12 @@ export default function ProjectMaterialCategory({ materials, showAll, setShowAll
   const utilityBg = '#7A7A7A'
   // =======================================
 
-  const [activeCategory, setActiveCategory] = useState('Fabrics')
+  const [activeCategory, setActiveCategory] = useState('')
 
   const hasUncategorized = materials.some((m) => m.category === '')
+  const realCategories = [...new Set(materials.map((m) => m.category).filter(Boolean))];
   const effectiveCategories: Category[] = [
-    ...allCategories.map(name => ({ id: name.toLowerCase(), name })),
+    ...realCategories.map(name => ({ id: name.toLowerCase(), name })),
     ...(hasUncategorized ? [{ id: 'uncategorized', name: 'Uncategorized' }] : []),
   ];
 
@@ -251,7 +249,7 @@ export default function ProjectMaterialCategory({ materials, showAll, setShowAll
     ? materials.filter(m => m.category === '')
     : materials.filter(m => m.category === activeCategory)
   const searchFiltered = categoryFiltered.filter((m) => m.name.toLowerCase().includes(searchValue.toLowerCase()))
-  const visibleMaterials = showAll ? searchFiltered : searchFiltered.slice(0, 5)
+  const visibleMaterials = searchFiltered.slice(0, 5)
 
   const activeIndex = effectiveCategories.findIndex(cat => cat.name === activeCategory)
   const maxDist = Math.max(activeIndex, effectiveCategories.length - 1 - activeIndex)
@@ -523,10 +521,8 @@ export default function ProjectMaterialCategory({ materials, showAll, setShowAll
         <StyledLink onClick={onAdd} className="text-black">
           <Typography variant="15" className="text-black">ADD MATERIAL</Typography>
         </StyledLink>
-        <StyledLink onClick={() => setShowAll(!showAll)} className="text-black">
-          <Typography variant="15" className="text-black">
-            {showAll ? 'HIDE INVENTORY' : 'EXPAND INVENTORY'}
-          </Typography>
+        <StyledLink onClick={(e) => onExpand(e)} className="text-black">
+          <Typography variant="15" className="text-black">EXPAND INVENTORY</Typography>
         </StyledLink>
       </ActionButtonsRow>
     </div>

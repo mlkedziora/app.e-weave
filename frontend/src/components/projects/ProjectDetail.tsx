@@ -1,10 +1,17 @@
 // frontend/src/components/projects/ProjectDetail.tsx
 import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
-import ScrollableContainer from '../common/ScrollableContainer'
-import MemberItem from '../common/MemberItem'
-import MaterialItem from '../common/MaterialItem'
+import ScrollablePanel from '../common/ScrollablePanel'
+import Typography from '../common/Typography'
+import StyledLink from '../common/StyledLink'
+import UnderlinedHeader from '../common/UnderlinedHeader'
+import ActionButtonsRow from '../common/ActionButtonsRow'
+import RecentNotesTable from '../common/RecentNotesTable'
+import ProjectMaterialCategory from './ProjectMaterialCategory'
 import TaskDetail from './TaskDetail';
+import AddNoteModal from '../notes/AddNoteModal'; // Import from shared
+import EditNoteModal from '../notes/EditNoteModal'; // Import from shared
+import AllNotesModal from '../notes/AllNotesModal'; // Import from shared
 
 interface TaskAssignee {
   teamMember: {
@@ -55,7 +62,62 @@ interface ProjectDetailData {
 
 interface Member { id: string; name: string; }
 
-const allCategories = ['Fabrics', 'Trims', 'Fusings']
+const CIRCLE_RADIUS = 60; // Adjust this const to change the size of all circular bars at once
+const STROKE_WIDTH = 3; // Adjust this const to change the thickness of the blue loaded part
+const BACKGROUND_STROKE_WIDTH =3; // Adjust this const to change the light grey width
+const LOADED_COLOR = '#46afffff'; // Adjust this const to change the blue color of the loaded part
+const METRICS_GAP_CLASS = 'gap-6'; // Adjust this to change the space gap between the circular bars, e.g., 'gap-8' for larger gap. Note: If it doesn't seem to work, ensure your Tailwind config includes the gap utilities and try increasing the value significantly for testing.
+const METRICS_BOTTOM_MARGIN_CLASS = 'mb-10'; // Adjust this to change the space between the metrics row and the "ADDITIONAL METRICS +" button, e.g., 'mb-8' for more space. This is the class on the div with className={`flex justify-between ${METRICS_PADDING_CLASS} ${METRICS_GAP_CLASS} ${METRICS_BOTTOM_MARGIN_CLASS}`}
+const METRICS_PADDING_CLASS = 'px-55'; // Adjust this to change the distance between the left and right edges of the panel for the circular metrics, e.g., 'px-8' for more padding on sides
+const PROTOTYPE_MARGIN_BOTTOM_CLASS = 'mb-10'; // Adjust this to change the gap between "Prototype – Based on PEFCR Guidelines" and the circular metrics, e.g., 'mb-6' for larger gap
+const TEXT_VERTICAL_OFFSET = '-7px'; // Adjust this const to move the inside text higher (more negative) or lower (positive). e.g., '-4px' to move higher.
+const BOTTOM_PANEL_PADDING = 'pb-5'; // Adjust this to change the space gap between the last buttons and the end of the scrollable panel on the bottom
+
+const CircularProgress = ({ value, max, label, unit }: { value: number; max: number; label: string; unit: string }) => {
+  const percentage = Math.min((value / max) * 100, 100); // Cap at 100%
+  const normalizedRadius = CIRCLE_RADIUS - STROKE_WIDTH / 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+  return (
+    <div className="relative flex flex-col items-center">
+      <svg
+        height={CIRCLE_RADIUS * 2}
+        width={CIRCLE_RADIUS * 2}
+        className="transform rotate-[-90deg]"
+      >
+        <circle
+          stroke="#d1d5db" // Light grey for not loaded
+          fill="transparent"
+          strokeWidth={BACKGROUND_STROKE_WIDTH}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={CIRCLE_RADIUS}
+          cy={CIRCLE_RADIUS}
+        />
+        <circle
+          stroke={LOADED_COLOR} // Blue for loaded
+          fill="transparent"
+          strokeWidth={STROKE_WIDTH}
+          strokeDasharray={`${circumference} ${circumference}`}
+          style={{ strokeDashoffset }}
+          strokeLinecap="round"
+          r={normalizedRadius}
+          cx={CIRCLE_RADIUS}
+          cy={CIRCLE_RADIUS}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center text-center" style={{ transform: `translateY(${TEXT_VERTICAL_OFFSET})` }}>
+        <Typography variant="15" className="text-black whitespace-nowrap">
+          {value.toFixed(0)} {unit}
+        </Typography>
+      </div>
+      <Typography variant="13" className="text-black mt-2 text-center">
+        {label}
+      </Typography>
+    </div>
+  );
+};
 
 export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [project, setProject] = useState<ProjectDetailData | null>(null)
@@ -63,7 +125,6 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [showAllTasks, setShowAllTasks] = useState(false)
   const [showAllMembers, setShowAllMembers] = useState(false)
   const [showAllMaterials, setShowAllMaterials] = useState(false)
-  const [activeCategory, setActiveCategory] = useState('Fabrics')
   const [showAllNotes, setShowAllNotes] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -84,6 +145,7 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
   const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([])
   const [materialSearch, setMaterialSearch] = useState('')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const allCategories = ['Fabrics', 'Other']; // Assuming based on context; adjust as needed
 
   const fetchProjectDetails = async () => {
     setError(null);
@@ -165,11 +227,11 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     return a.progress - b.progress
   })
   const visibleTasks = showAllTasks ? sortedTasks : sortedTasks.slice(0, 10)
+  const halfTasks = Math.ceil(visibleTasks.length / 2);
+  const leftTasks = visibleTasks.slice(0, halfTasks);
+  const rightTasks = visibleTasks.slice(halfTasks);
 
   const visibleMembers = showAllMembers ? (project.assignees || []) : (project.assignees || []).slice(0, 4);
-
-  const filteredMaterials = project.materials.filter((m) => m.category === activeCategory)
-  const visibleMaterials = showAllMaterials ? filteredMaterials : filteredMaterials.slice(0, 5)
 
   const calculateEScore = () => {
     if (!project.materials.length) return 0
@@ -286,45 +348,121 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
     }
   }
 
+  const handleDeleteNote = async (noteId: string) => {
+    if (confirm('Delete this note?')) {
+      try {
+        const token = await getToken({ template: 'backend-access' });
+        const res = await fetch(`/api/projects/notes/${noteId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          const errorBody = await res.json();
+          console.error(`[DeleteNote] Failed: Status ${res.status}, Body:`, errorBody);
+          alert('Failed to delete');
+        } else {
+          console.log('[DeleteNote] Success');
+          refreshNotes();
+        }
+      } catch (err) {
+        console.error('[DeleteNote] Error:', err);
+        alert('Error deleting');
+      }
+    }
+  };
+
   return (
-    <div className="w-full bg-white p-6 rounded-lg shadow-md text-black overflow-y-auto h-full">
-      <div className="space-y-8 pr-2">
-        <h1 className="text-3xl font-bold">PROJECT DETAILS</h1>
-        <img src="/project.jpg" alt="Project" className="max-w-[100px] max-h-[100px] w-[100px] h-[100px] rounded-full object-cover" />
-        <p className="text-xl">PROJECT NAME: {project.name}</p>
-        <p>TASKS COUNT: {project.tasks.length}</p>
-        <p>START DATE: {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'}</p>
-        <p>DEADLINE: {project.deadline ? new Date(project.deadline).toLocaleDateString() : 'N/A'}</p>
-
-        <h2 className="text-2xl font-bold">COMPLETION METRICS</h2>
-        <h3 className="text-sm text-gray-500">PROTOTYPE - BASED ON PEFCR GUIDELINES & TEAM PERFORMANCE</h3>
-        <p>E-SCORE {calculateEScore()}/100 (based on the average of all the metrics of all the materials included in the project)</p>
-        <p>COMPLETION % {calculateCompletion()} (based on the average of the % of completions of all the tasks within the project, the tasks are assigned to individual members)</p>
-
-        <h2 className="text-2xl font-bold">ASSIGNED TASKS</h2>
-        <ul className="space-y-2">
-          {visibleTasks.map((task) => (
-            <li 
-              key={task.id} 
-              className="flex items-center cursor-pointer hover:bg-gray-100 p-2 rounded"
-              onClick={() => setSelectedTask(task)}
-            >
-              <span className="mr-2">◯</span>
-              {task.name} (Assigned to: {task.assignees.map(a => a.teamMember.name).join(', ') || 'Unassigned'}, Progress: {task.progress}%)
-            </li>
-          ))}
-        </ul>
-        <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddTaskForm(!showAddTaskForm)}>
-            ADD TASKS
-          </button>
-          <button
-            className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-            onClick={() => setShowAllTasks(!showAllTasks)}
-          >
-            {showAllTasks ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
-          </button>
+    <ScrollablePanel className={`space-y-12 ${BOTTOM_PANEL_PADDING}`}>
+      {/* PROJECT DETAILS */}
+      <div>
+        <UnderlinedHeader title="PROJECT DETAILS" />
+        <div className="flex gap-8">
+          <img
+            src="/project.jpg"
+            alt="Project"
+            className="w-48 h-48 object-cover rounded"
+          />
+          <div className="space-y-4">
+            <Typography variant="15" className="text-black">Project Name: {project.name}</Typography>
+            <Typography variant="15" className="text-black">Description: {project.description || '—'}</Typography>
+            <Typography variant="15" className="text-black">Start Date: {project.startDate ? new Date(project.startDate).toLocaleDateString() : 'N/A'}</Typography>
+            <Typography variant="15" className="text-black">Deadline: {project.deadline ? new Date(project.deadline).toLocaleDateString() : 'N/A'}</Typography>
+            <Typography variant="15" className="text-black">Tasks Count: {project.tasks.length}</Typography>
+          </div>
         </div>
+      </div>
+
+      {/* COMPLETION METRICS */}
+      <div>
+        <UnderlinedHeader title="COMPLETION METRICS" />
+        <Typography variant="13" className={`text-black ${PROTOTYPE_MARGIN_BOTTOM_CLASS}`}>Prototype – Based on PEFCR Guidelines & Team Performance</Typography>
+        <div className={`flex justify-between ${METRICS_PADDING_CLASS} ${METRICS_GAP_CLASS} ${METRICS_BOTTOM_MARGIN_CLASS}`}>
+          <CircularProgress 
+            value={calculateEScore()} 
+            max={100} 
+            label="E-Score" 
+            unit=""
+          />
+          <CircularProgress 
+            value={calculateCompletion()} 
+            max={100} 
+            label="Completion" 
+            unit="%"
+          />
+        </div>
+      </div>
+
+      {/* ASSIGNED TASKS */}
+      <div>
+        <UnderlinedHeader title="ASSIGNED TASKS" />
+        {project.tasks.length > 0 ? (
+          <div className="flex gap-4 mb-6">
+            <div className="flex flex-col space-y-4 flex-1">
+              {leftTasks.map((task) => (
+                <div 
+                  key={task.id} 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => setSelectedTask(task)}
+                >
+                  <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                    {task.progress === 100 && <div className="w-2 h-2 bg-black rounded-full" />}
+                  </div>
+                  <Typography variant="15" className="text-black">
+                    {task.name} ({task.assignees.map(a => a.teamMember.name).join(', ') || 'Unassigned'})
+                  </Typography>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col space-y-4 flex-1">
+              {rightTasks.map((task) => (
+                <div 
+                  key={task.id} 
+                  className="flex items-center cursor-pointer"
+                  onClick={() => setSelectedTask(task)}
+                >
+                  <div className="w-4 h-4 border border-black rounded-full flex items-center justify-center mr-2 flex-shrink-0">
+                    {task.progress === 100 && <div className="w-2 h-2 bg-black rounded-full" />}
+                  </div>
+                  <Typography variant="15" className="text-black">
+                    {task.name} ({task.assignees.map(a => a.teamMember.name).join(', ') || 'Unassigned'})
+                  </Typography>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <Typography variant="13" className="text-black italic mb-6">No assigned tasks.</Typography>
+        )}
+        <ActionButtonsRow>
+          <StyledLink onClick={() => setShowAddTaskForm(true)} className="text-black">
+            <Typography variant="15" className="text-black">ADD TASK</Typography>
+          </StyledLink>
+          <StyledLink onClick={() => setShowAllTasks(!showAllTasks)} className="text-black">
+            <Typography variant="15" className="text-black">
+              {showAllTasks ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
+            </Typography>
+          </StyledLink>
+        </ActionButtonsRow>
         {showAddTaskForm && (
           <div className="mt-4 p-4 border rounded">
             <form onSubmit={handleAddTask}>
@@ -374,16 +512,18 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             </form>
           </div>
         )}
-
         {selectedTask && (
           <TaskDetail 
             task={selectedTask} 
             onClose={() => setSelectedTask(null)} 
           />
         )}
+      </div>
 
-        <h2 className="text-2xl font-bold">ASSIGNED TEAM MEMBERS</h2>
-        <div className="space-y-4">
+      {/* ASSIGNED TEAM MEMBERS */}
+      <div>
+        <UnderlinedHeader title="ASSIGNED TEAM MEMBERS" />
+        {project.assignees?.length > 0 ? (
           <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-fill-color:#D7FAEA] [--progress-padding:0.155rem]">
             {visibleMembers.map((member) => {
               const memberTasks = project.tasks.filter((t) => t.assignees.some((a) => a.teamMember.id === member.id));
@@ -391,29 +531,55 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
                 ? Math.round(memberTasks.reduce((sum, t) => sum + t.progress, 0) / memberTasks.length) 
                 : 0;
               return (
-                <MemberItem
+                <div
                   key={member.id}
-                  name={member.name}
-                  role={member.role || 'Unknown'}
-                  progress={progress}
-                  onClick={() => {}}  // Add if needed
-                  imageUrl={member.imageUrl}
-                />
+                  className="cursor-pointer hover:bg-gray-50 p-3"
+                  onClick={() => {}}
+                >
+                  <div className="flex items-center space-x-4">
+                    <img
+                      src={member.imageUrl || "/profile-icon.jpg"}
+                      alt="Profile"
+                      className="w-[75px] h-[75px] rounded-full object-cover"
+                    />
+                    <div className="space-y-1">
+                      <Typography variant="17" className="text-black">{member.name} — {member.role || 'Unknown'}</Typography>
+                      <Typography variant="13" className="text-black">TASK PROGRESS: {progress}%</Typography>
+                    </div>
+                  </div>
+                  <div className="mt-2" style={{ width: 'var(--progress-bar-width)' }}>
+                    <div 
+                      className="overflow-hidden bg-[var(--progress-bg-color)] rounded" 
+                      style={{ height: 'var(--progress-bar-height)' }} 
+                    >
+                      <div
+                        className="bg-[var(--progress-fill-color)] rounded"
+                        style={{ 
+                          width: `max(0px, calc(${progress}% - 2 * var(--progress-padding)))`,
+                          height: 'var(--progress-fill-height)',
+                          marginLeft: 'var(--progress-padding)',
+                          marginTop: 'calc((var(--progress-bar-height) - var(--progress-fill-height)) / 2)'
+                        }} 
+                      ></div>
+                    </div>
+                  </div>
+                </div>
               );
             })}
           </div>
-        </div>
-        <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddMemberForm(!showAddMemberForm)}>
-            ADD TEAM MEMBER
-          </button>
-          <button
-            className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-            onClick={() => setShowAllMembers(!showAllMembers)}
-          >
-            {showAllMembers ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
-          </button>
-        </div>
+        ) : (
+          <Typography variant="13" className="text-black italic mb-6">No assigned team members.</Typography>
+        )}
+        <ActionButtonsRow>
+          <StyledLink onClick={() => setShowAddMemberForm(true)} className="text-black">
+            <Typography variant="15" className="text-black">ADD TEAM MEMBER</Typography>
+          </StyledLink>
+          <StyledLink onClick={() => setShowAllMembers(!showAllMembers)} className="text-black">
+            <Typography variant="15" className="text-black">
+              {showAllMembers ? 'HIDE HISTORY' : 'EXPAND HISTORY'}
+            </Typography>
+          </StyledLink>
+        </ActionButtonsRow>
         {showAddMemberForm && (
           <div className="mt-4 p-4 border rounded">
             <label className="block mb-2">Select Team Members</label>
@@ -436,391 +602,120 @@ export default function ProjectDetail({ projectId }: { projectId: string }) {
             </button>
           </div>
         )}
+      </div>
 
-        <h2 className="text-2xl font-bold">FABRICS / TRIMS / FUSING / +</h2>
-        <div className="flex space-x-2 mb-4 border-b">
-          {allCategories.map((category) => (
-            <button
-              key={category}
-              onClick={() => setActiveCategory(category)}
-              className={`text-sm font-medium px-4 py-2 rounded-t-md transition-all border ${
-                activeCategory === category
-                  ? 'bg-white text-black border-b-white'
-                  : 'bg-gray-100 text-gray-500 border-transparent hover:bg-gray-200'
-              }`}
-            >
-              {category.toUpperCase()}
-            </button>
-          ))}
-          <img src="/search.png" alt="Search" className="ml-auto w-[30px] h-[30px]" />
-          <button
-            disabled
-            className="text-sm text-gray-400 border px-3 py-2 rounded-t-md cursor-not-allowed"
-          >
-            +
-          </button>
-        </div>
-        <div className="space-y-4">
-          <div className="bg-white p-4 rounded-lg [--progress-bar-height:0.4rem] [--progress-fill-height:0.2rem] [--progress-bar-width:100%] [--progress-bg-color:#d4d4d4] [--progress-padding:0.155rem]">
-            {visibleMaterials.map((material) => (
-              <MaterialItem
-                key={material.id}
-                name={material.name}
-                length={material.length}
-                eScore={material.eScore}
-                onClick={() => {}}
-                imageUrl={material.imageUrl}
-              />
+      {/* ASSIGNED MATERIALS */}
+      <ProjectMaterialCategory 
+        materials={project.materials} 
+        showAll={showAllMaterials} 
+        setShowAll={setShowAllMaterials} 
+        onAdd={() => setShowAddMaterialForm(true)} 
+      />
+
+      {showAddMaterialForm && (
+        <div className="mt-4 p-4 border rounded">
+          <input
+            type="text"
+            placeholder="Search materials"
+            value={materialSearch}
+            onChange={(e) => setMaterialSearch(e.target.value)}
+            className="border border-gray-300 rounded px-3 py-2 mb-4 w-full text-black"
+          />
+          <div className="flex space-x-2 mb-4">
+            {allCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveAddCategory(category)}
+                className={`text-sm font-medium px-4 py-2 rounded-t-md transition-all ${
+                  activeAddCategory === category ? 'bg-white text-black' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {category.toUpperCase()}
+              </button>
             ))}
           </div>
-        </div>
-        <div className="flex gap-4">
-          <button className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800" onClick={() => setShowAddMaterialForm(!showAddMaterialForm)}>
-            ADD MATERIAL
-          </button>
-          <button
-            className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-            onClick={() => setShowAllMaterials(!showAllMaterials)}
-          >
-            {showAllMaterials ? 'HIDE INVENTORY' : 'EXPAND INVENTORY'}
-          </button>
-        </div>
-        {showAddMaterialForm && (
-          <div className="mt-4 p-4 border rounded">
-            <input
-              type="text"
-              placeholder="Search materials"
-              value={materialSearch}
-              onChange={(e) => setMaterialSearch(e.target.value)}
-              className="border border-gray-300 rounded px-3 py-2 mb-4 w-full text-black"
-            />
-            <div className="flex space-x-2 mb-4">
-              {allCategories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveAddCategory(category)}
-                  className={`text-sm font-medium px-4 py-2 rounded-t-md transition-all ${
-                    activeAddCategory === category ? 'bg-white text-black' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {category.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-4">
-              {allMaterials
-                .filter(
-                  (m) =>
-                    m.category === activeAddCategory &&
-                    !project.materials.some((pm) => pm.id === m.id) &&
-                    m.name.toLowerCase().includes(materialSearch.toLowerCase())
-                )
-                .map((m) => (
-                  <div key={m.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedMaterialIds.includes(m.id)}
-                      onChange={() => toggleMaterialSelect(m.id)}
-                      className="mr-2"
-                    />
-                    <span>{m.name} (Quantity: {m.length}m, E-Score: {m.eScore})</span>
-                  </div>
-                ))}
-            </div>
-            <button onClick={handleAddMaterials} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
-              Add Selected Materials
-            </button>
-          </div>
-        )}
-
-        <h2 className="text-2xl font-bold">COMPLETION FORECAST</h2>
-        <h3 className="text-sm text-gray-500">BASED ON DEADLINE, TASKS TO REALISE, AND TIME ESTIMATE TO DO SO</h3>
-        <img src="/growth-forecast.png" alt="Growth Forecast" className="w-full h-40 object-cover rounded" />
-
-        <h2 className="text-2xl font-bold">RECENT NOTES</h2>
-        <div className="space-y-3">
-          {project.notes?.slice(0, 3).map((note, i) => (
-            <div key={i} className="border p-3 rounded bg-gray-50">
-              <p className="text-sm text-gray-600">
-                {note.teamMember?.name || 'Unknown'} – {new Date(note.updatedAt || note.createdAt).toLocaleString()}
-              </p>
-              <p>{note.content}</p>
-              {note.teamMember?.userId === currentUserId && (
-                <div className="mt-1 flex gap-2">
-                  <button
-                    className="text-xs underline text-blue-600"
-                    onClick={() => {
-                      setSelectedNote(note)
-                      setShowEditModal(true)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-xs underline text-red-500"
-                    onClick={async () => {
-                      if (confirm('Delete this note?')) {
-                        try {
-                          const token = await getToken({ template: 'backend-access' })
-                          const res = await fetch(`/api/projects/notes/${note.id}`, {  
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${token}` },
-                          })
-                          if (!res.ok) {
-                            throw new Error('Failed to delete')
-                          }
-                          refreshNotes()
-                        } catch (err) {
-                          console.error('Error deleting note:', err)
-                          alert('Error deleting')
-                        }
-                      }
-                    }}
-                  >
-                    Delete
-                  </button>
+          <div className="space-y-4">
+            {allMaterials
+              .filter(
+                (m) =>
+                  m.category === activeAddCategory &&
+                  !project.materials.some((pm) => pm.id === m.id) &&
+                  m.name.toLowerCase().includes(materialSearch.toLowerCase())
+              )
+              .map((m) => (
+                <div key={m.id} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selectedMaterialIds.includes(m.id)}
+                    onChange={() => toggleMaterialSelect(m.id)}
+                    className="mr-2"
+                  />
+                  <span>{m.name} (Quantity: {m.length}m, E-Score: {m.eScore})</span>
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-4">
-          <button
-            className="mt-3 px-3 py-1 border rounded text-sm"
-            onClick={() => setShowAddModal(true)}
-          >
-            Add Note
-          </button>
-          <button
-            className="mt-3 px-3 py-1 border rounded text-sm"
-            onClick={() => setShowAllNotes(true)}
-          >
-            EXPAND HISTORY
+              ))}
+          </div>
+          <button onClick={handleAddMaterials} className="mt-4 bg-blue-500 text-white px-4 py-2 rounded">
+            Add Selected Materials
           </button>
         </div>
+      )}
 
+      {/* COMPLETION FORECAST */}
+      <div>
+        <UnderlinedHeader title="COMPLETION FORECAST" />
+        <Typography variant="13" className="text-black mb-2">BASED ON DEADLINE, TASKS TO REALISE, AND TIME ESTIMATE TO DO SO</Typography>
+        <img
+          src="/growth-forecast.png"
+          alt="Growth Forecast"
+          className="w-full max-w-md rounded mb-4" 
+        />
+      </div>
+
+      {/* RECENT NOTES */}
+      <div>
+        <UnderlinedHeader title="RECENT NOTES" />
+        <RecentNotesTable
+          notes={project.notes || []}
+          currentUserId={currentUserId}
+          onEdit={(note) => {
+            setSelectedNote(note);
+            setShowEditModal(true);
+          }}
+          onDelete={handleDeleteNote}
+          onShowAll={() => setShowAllNotes(true)}
+          onAdd={() => setShowAddModal(true)}
+        />
         {showEditModal && selectedNote && (
-          <EditNoteModal
-            note={selectedNote}
-            onClose={() => setShowEditModal(false)}
-            onSuccess={() => {
-              setShowEditModal(false)
-              refreshNotes()
-            }}
+          <EditNoteModal 
+            entityType="project"
+            note={selectedNote} 
+            onClose={() => setShowEditModal(false)} 
+            onSuccess={() => { setShowEditModal(false); refreshNotes(); }} 
           />
         )}
 
         {showAddModal && (
-          <AddNoteModal
-            projectId={project.id}
-            onClose={() => setShowAddModal(false)}
-            onSuccess={() => {
-              setShowAddModal(false)
-              refreshNotes()
-            }}
+          <AddNoteModal 
+            entityType="project"
+            entityId={project.id} 
+            onClose={() => setShowAddModal(false)} 
+            onSuccess={() => { setShowAddModal(false); refreshNotes(); }} 
           />
         )}
 
         {showAllNotes && (
-          <AllNotesModal notes={project.notes || []} onClose={() => setShowAllNotes(false)} onSuccess={refreshNotes} />
+          <AllNotesModal 
+            notes={project.notes || []} 
+            currentUserId={currentUserId}
+            onEdit={(note) => {
+              setSelectedNote(note);
+              setShowEditModal(true);
+            }}
+            onDelete={handleDeleteNote}
+            onClose={() => setShowAllNotes(false)} 
+          />
         )}
       </div>
-    </div>
-  )
-}
-
-type EditNoteModalProps = {
-  note: Note
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function EditNoteModal({ note, onClose, onSuccess }: EditNoteModalProps) {
-  const [content, setContent] = useState(note.content)
-  const [loading, setLoading] = useState(false)
-  const { getToken } = useAuth()
-
-  const handleSubmit = async () => {
-    setLoading(true)
-    try {
-      const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/api/projects/notes/${note.id}`, {  
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content }),
-      })
-      if (!res.ok) {
-        throw new Error('Failed to update note')
-      }
-      onSuccess()
-    } catch (err) {
-      console.error('Error updating note:', err)
-      alert('Error updating note')
-    }
-    setLoading(false)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md w-96">
-        <h2 className="text-lg font-bold mb-4">Edit Note</h2>
-        <textarea
-          className="w-full p-2 border rounded mb-4"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-        />
-        <div className="flex justify-end gap-2">
-          <button className="px-4 py-2 border rounded" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleSubmit} disabled={loading}>
-            Save
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-type AddNoteModalProps = {
-  projectId: string
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function AddNoteModal({ projectId, onClose, onSuccess }: AddNoteModalProps) {
-  const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(false)
-  const { getToken } = useAuth()
-
-  const handleSubmit = async () => {
-    if (!content.trim()) return
-    setLoading(true)
-    try {
-      const token = await getToken({ template: 'backend-access' })
-      const res = await fetch(`/api/projects/${projectId}/notes`, {  
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content }),
-      })
-      if (!res.ok) {
-        throw new Error('Failed to add note')
-      }
-      onSuccess()
-    } catch (err) {
-      console.error('Error adding note:', err)
-      alert('Error adding note')
-    }
-    setLoading(false)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md w-96">
-        <h2 className="text-lg font-bold mb-4">Add Note</h2>
-        <textarea
-          className="w-full p-2 border rounded mb-4"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Write your note..."
-        />
-        <div className="flex justify-end gap-2">
-          <button className="px-4 py-2 border rounded" onClick={onClose} disabled={loading}>
-            Cancel
-          </button>
-          <button className="px-4 py-2 bg-blue-500 text-white rounded" onClick={handleSubmit} disabled={loading}>
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-type AllNotesModalProps = {
-  notes: Note[]
-  onClose: () => void
-  onSuccess: () => void
-}
-
-function AllNotesModal({ notes, onClose, onSuccess }: AllNotesModalProps) {
-  const [showEditModal, setShowEditModal] = useState(false)
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
-  const { getToken, userId: currentUserId } = useAuth()
-
-  const handleDelete = async (noteId: string) => {
-    if (confirm('Delete this note?')) {
-      try {
-        const token = await getToken({ template: 'backend-access' })
-        const res = await fetch(`/api/projects/notes/${noteId}`, {  
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) {
-          throw new Error('Failed to delete')
-        }
-        onSuccess()
-      } catch (err) {
-        console.error('Error deleting note:', err)
-        alert('Error deleting')
-      }
-    }
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded shadow-md max-w-lg w-full max-h-96">
-        <h2 className="text-xl font-bold mb-4">All Notes</h2>
-        <ScrollableContainer className="space-y-3">
-          {notes.map((note, i) => (
-            <div key={i} className="border p-3 rounded bg-gray-50">
-              <p className="text-sm text-gray-600">
-                {note.teamMember?.name || 'Unknown'} – {new Date(note.updatedAt || note.createdAt).toLocaleString()}
-              </p>
-              <p>{note.content}</p>
-              {note.teamMember?.userId === currentUserId && (
-                <div className="mt-1 flex gap-2">
-                  <button
-                    className="text-xs underline text-blue-600"
-                    onClick={() => {
-                      setSelectedNote(note)
-                      setShowEditModal(true)
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    className="text-xs underline text-red-500"
-                    onClick={() => handleDelete(note.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </ScrollableContainer>
-        <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded" onClick={onClose}>
-          Close
-        </button>
-      </div>
-
-      {showEditModal && selectedNote && (
-        <EditNoteModal
-          note={selectedNote}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={() => {
-            setShowEditModal(false)
-            onSuccess()
-          }}
-        />
-      )}
-    </div>
+    </ScrollablePanel>
   )
 }
